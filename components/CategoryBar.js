@@ -2,8 +2,7 @@ import React from 'react';
 import { ScrollView, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-
-const categories = ['National', 'World', 'Business', 'Sports', 'Tech'];
+const categories = ['National', 'World', 'Business', 'Sports', 'Tech', 'Bookmarks'];
 
 const CategoryBar = () => {
   const navigation = useNavigation();
@@ -17,9 +16,12 @@ const CategoryBar = () => {
           activeOpacity={0.8}
           onPress={() => {
             if (category === 'National') {
-              navigation.navigate('National'); // Navigate to National screen
+              navigation.navigate('National');
+            } else if (category === 'Bookmarks') {
+              navigation.navigate('Bookmarks');
             }
           }}
+          
         >
           <LinearGradient colors={['#6a11cb', '#2575fc']} style={styles.gradient}>
             <Text style={styles.categoryText}>{category}</Text>

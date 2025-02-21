@@ -3,6 +3,7 @@ import { View, FlatList, RefreshControl, ActivityIndicator } from 'react-native'
 import HTMLParser from 'react-native-html-parser';
 import NewsCard from './NewsCard';
 import { useNavigation } from '@react-navigation/native';
+import { saveBookmark, removeBookmark } from './bookmarkUtils';
 
 const National = () => {
   const [newsList, setNewsList] = useState([]);
@@ -13,6 +14,14 @@ const National = () => {
   useEffect(() => {
     fetchAllNews();
   }, []);
+
+  const handleBookmark = async (newsItem, isBookmarked) => {
+    if (isBookmarked) {
+      await saveBookmark(newsItem);
+    } else {
+      await removeBookmark(newsItem);
+    }
+  };
 
   const extractImageUrl = (article) => {
     try {
@@ -434,7 +443,9 @@ const National = () => {
         data={newsList}
         keyExtractor={(item, index) => index.toString()}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0000ff']} />}
-        renderItem={({ item }) => <NewsCard news={item} navigation={navigation} />}
+        renderItem={({ item }) => (
+          <NewsCard news={item} navigation={navigation} onBookmark={handleBookmark} />
+        )}
       />
     </View>
   );

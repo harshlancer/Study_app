@@ -5,6 +5,8 @@ import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import National from '../components/National';
 import WebViewScreen from '../components/WebViewScreen';
+import Bookmarks from '../components/Bookmarks';
+
 
 const Stack = createStackNavigator();
 
@@ -36,6 +38,8 @@ const AppNavigator = () => {
         />
         <Stack.Screen name="WebViewScreen" component={WebViewScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Bookmarks" component={Bookmarks} />
+
       </Stack.Navigator>
     </NavigationContainer>
   );
