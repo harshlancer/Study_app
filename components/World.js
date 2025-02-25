@@ -5,7 +5,7 @@ import NewsCard from './NewsCard';
 import { useNavigation } from '@react-navigation/native';
 import { saveBookmark, removeBookmark } from './bookmarkUtils';
 import CategoryBar from './CategoryBar';
-const National = () => {
+const World = () => {
   const [newsList, setNewsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -80,7 +80,7 @@ const National = () => {
 
   const fetchJagranNews = async () => {
     try {
-      const response = await fetch('https://www.jagranjosh.com/current-affairs/national-india-1283851987-catlistshow-1');
+      const response = await fetch('https://www.jagranjosh.com/current-affairs/international-world-1283850903-catlistshow-1');
       const htmlText = await response.text();
 
       if (!htmlText || htmlText.trim() === '') {
@@ -206,7 +206,7 @@ const National = () => {
 
   const fetchGKTodayNews = async (page = 1) => {
     try {
-      const response = await fetch(`https://www.gktoday.in/current-affairs/page/${page}/`);
+      const response = await fetch(`https://www.gktoday.in/current-affairs/international-current-affairs/page/${page}/`);
       const htmlText = await response.text();
   
       if (!htmlText || htmlText.trim() === '') {
@@ -214,8 +214,9 @@ const National = () => {
         return [];
       }
   
-      // Process the HTML content for this page
+      console.log(`Fetched HTML for page ${page}`); // Debugging
       const news = await fetchGKTodayNewsWithRegex(htmlText);
+      console.log(`Fetched ${news.length} items from page ${page}`); // Debugging
       return news;
     } catch (error) {
       console.error(`Error fetching GKToday news from page ${page}:`, error);
@@ -223,84 +224,7 @@ const National = () => {
     }
   };
 
-  // New function to fetch news from Indian Express
-  const fetchIndianExpressNews = async () => {
-    try {
-      const response = await fetch('https://indianexpress.com/about/current-affairs/');
-      const htmlText = await response.text();
 
-      if (!htmlText || htmlText.trim() === '') {
-        console.warn('Empty response from Indian Express');
-        return [];
-      }
-
-      try {
-        const parser = new HTMLParser.DOMParser();
-        const doc = parser.parseFromString(htmlText, 'text/html');
-
-        // Find all news items based on the provided HTML structure
-        const newsDetails = doc.getElementsByClassName('details');
-        const extractedNews = [];
-
-        for (let i = 0; i < newsDetails.length; i++) {
-          try {
-            const detail = newsDetails[i];
-            
-            // Extract title from h3 > a
-            const titleElement = detail.getElementsByTagName('h3')[0]?.getElementsByTagName('a')[0];
-            if (!titleElement) continue;
-            
-            const title = titleElement.textContent.trim() || 'No Title';
-            const url = titleElement.getAttribute('href') || '#';
-            
-            // Extract time from the first paragraph
-            const paragraphs = detail.getElementsByTagName('p');
-            const time = paragraphs[0]?.textContent.trim() || 'No Time';
-            
-            // Extract summary from the second paragraph if available
-            let summary = '';
-            if (paragraphs && paragraphs.length > 1) {
-              summary = paragraphs[1].textContent.trim();
-            }
-            
-            // Extract image from the thumbnail
-            const thumbDiv = detail.getElementsByClassName('about-thumb')[0];
-            let imageUrl = 'https://via.placeholder.com/600x300';
-            
-            if (thumbDiv) {
-              const imgElement = thumbDiv.getElementsByTagName('img')[0];
-              if (imgElement) {
-                // Try data-src first, then fallback to src
-                imageUrl = imgElement.getAttribute('data-src') || imgElement.getAttribute('src') || imageUrl;
-              }
-            }
-            
-            extractedNews.push({ 
-              title, 
-              url, 
-              time, 
-              imageUrl,
-              summary,
-              source: 'Indian Express'
-            });
-          } catch (articleError) {
-            console.warn('Error parsing individual Indian Express article', articleError);
-            continue;
-          }
-        }
-
-        return extractedNews;
-      } catch (parseError) {
-        console.error('Error parsing Indian Express HTML:', parseError);
-        return [];
-      }
-    } catch (error) {
-      console.error('Error fetching Indian Express news:', error);
-      return [];
-    }
-  };
-
-  // Normalize date strings for more accurate parsing
   const normalizeDate = (dateStr) => {
     if (!dateStr) return '';
     
@@ -342,84 +266,11 @@ const National = () => {
   
       // Get Jagran news
       const jagranNews = await fetchJagranNews();
-      
-      // Get Indian Express news
-      const indianExpressNews = await fetchIndianExpressNews();
   
-      // Merge all news sources
-      const allNews = [...jagranNews, ...gkTodayNews, ...indianExpressNews];
+      // Show GKToday news first, then Jagran news
+      const allNews = [...gkTodayNews, ...jagranNews];
   
-      // Enhanced date sorting with support for multiple formats
-      const sortedNews = allNews.sort((a, b) => {
-        try {
-          // Normalize date strings
-          const normalizedTimeA = normalizeDate(a.time);
-          const normalizedTimeB = normalizeDate(b.time);
-  
-          // Try to parse the dates
-          const dateA = new Date(normalizedTimeA);
-          const dateB = new Date(normalizedTimeB);
-  
-          // If both dates are valid, compare them
-          if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
-            return dateB - dateA; // Sort newer first
-          }
-  
-          // If date parsing fails, try to compare the original strings
-          // This handles relative dates like "Yesterday", "2 days ago", etc.
-          if (a.time.includes('ago') && b.time.includes('ago')) {
-            // Extract number of time units
-            const unitsA = parseInt(a.time.match(/\d+/)?.[0] || '0');
-            const unitsB = parseInt(b.time.match(/\d+/)?.[0] || '0');
-  
-            // Compare based on time units (smaller is more recent)
-            if (a.time.includes('minute') && b.time.includes('minute')) {
-              return unitsA - unitsB;
-            } else if (a.time.includes('hour') && b.time.includes('hour')) {
-              return unitsA - unitsB;
-            } else if (a.time.includes('day') && b.time.includes('day')) {
-              return unitsA - unitsB;
-            } else if (a.time.includes('minute') && b.time.includes('hour')) {
-              return -1; // minutes ago is more recent than hours ago
-            } else if (a.time.includes('hour') && b.time.includes('minute')) {
-              return 1;
-            } else if (a.time.includes('minute') && b.time.includes('day')) {
-              return -1;
-            } else if (a.time.includes('day') && b.time.includes('minute')) {
-              return 1;
-            } else if (a.time.includes('hour') && b.time.includes('day')) {
-              return -1;
-            } else if (a.time.includes('day') && b.time.includes('hour')) {
-              return 1;
-            }
-          }
-  
-          // Special cases
-          if (a.time.toLowerCase().includes('today') && !b.time.toLowerCase().includes('today')) {
-            return -1;
-          } else if (!a.time.toLowerCase().includes('today') && b.time.toLowerCase().includes('today')) {
-            return 1;
-          } else if (a.time.toLowerCase().includes('yesterday') && !b.time.toLowerCase().includes('yesterday')) {
-            return b.time.toLowerCase().includes('today') ? 1 : -1;
-          } else if (!a.time.toLowerCase().includes('yesterday') && b.time.toLowerCase().includes('yesterday')) {
-            return a.time.toLowerCase().includes('today') ? -1 : 1;
-          }
-  
-          // Final fallback: compare strings (newer strings typically come later alphabetically)
-          return (b.time || '').localeCompare(a.time || '');
-        } catch (e) {
-          console.warn('Error sorting dates:', e);
-          // Use the source as a fallback sort key (can prioritize certain sources)
-          return (a.source || '').localeCompare(b.source || '');
-        }
-      });
-  
-      console.log(`Fetched ${sortedNews.length} news items with summaries`);
-      if (sortedNews.length > 0) {
-        console.log('First item:', JSON.stringify(sortedNews[0]));
-      }
-  
-      setNewsList(sortedNews);
+      setNewsList(allNews);
     } catch (error) {
       console.error('Error fetching news:', error);
     } finally {
@@ -427,6 +278,7 @@ const National = () => {
       setRefreshing(false);
     }
   };
+  
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -438,19 +290,14 @@ const National = () => {
     <ActivityIndicator size="large" color="#0000ff" />
   </View>
   }
+
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <StatusBar backgroundColor="#0000ff" barStyle="light-content" />
       <FlatList
         data={newsList}
         keyExtractor={(item, index) => index.toString()}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#0000ff']}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0000ff']} />}
         renderItem={({ item }) => (
           <NewsCard news={item} navigation={navigation} onBookmark={handleBookmark} />
         )}
@@ -459,5 +306,4 @@ const National = () => {
   );
 };
 
-
-export default National;
+export default World;

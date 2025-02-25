@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, FlatList, ActivityIndicator } from 'react-native';
 import NewsCard from './NewsCard';
-import { getBookmarks } from './bookmarkUtils';
+import { getBookmarks, removeBookmark } from './bookmarkUtils';
 
 const Bookmarks = ({ navigation }) => {
   const [bookmarks, setBookmarks] = useState([]);
@@ -17,6 +17,16 @@ const Bookmarks = ({ navigation }) => {
     fetchBookmarks();
   }, []);
 
+  const handleBookmark = async (newsItem, isBookmarked) => {
+    if (!isBookmarked) {
+      // Remove the article from bookmarks
+      await removeBookmark(newsItem);
+      // Update the bookmarks list
+      const updatedBookmarks = bookmarks.filter((item) => item.url !== newsItem.url);
+      setBookmarks(updatedBookmarks);
+    }
+  };
+
   if (loading) {
     return <ActivityIndicator size="large" color="#0000ff" />;
   }
@@ -26,7 +36,14 @@ const Bookmarks = ({ navigation }) => {
       <FlatList
         data={bookmarks}
         keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => <NewsCard news={item} navigation={navigation} />}
+        renderItem={({ item }) => (
+          <NewsCard
+            news={item}
+            navigation={navigation}
+            isBookmarked={true} // Force bookmark icon to be dark
+            onBookmark={handleBookmark} // Pass the handleBookmark function
+          />
+        )}
       />
     </View>
   );
