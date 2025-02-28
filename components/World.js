@@ -5,6 +5,9 @@ import NewsCard from './NewsCard';
 import { useNavigation } from '@react-navigation/native';
 import { saveBookmark, removeBookmark } from './bookmarkUtils';
 import CategoryBar from './CategoryBar';
+import LoadingScreen from './LoadingScreen'; // Import the LoadingScreen
+
+
 const World = () => {
   const [newsList, setNewsList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -286,14 +289,11 @@ const World = () => {
   };
 
   if (loading && !refreshing) {
-    return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}>
-    <ActivityIndicator size="large" color="#0000ff" />
-  </View>
+    return <LoadingScreen />; // Use the LoadingScreen with quotes
   }
-
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-      <StatusBar backgroundColor="#0000ff" barStyle="light-content" />
+      <StatusBar backgroundColor="#FF5722" barStyle="light-content" />
       <FlatList
         data={newsList}
         keyExtractor={(item, index) => index.toString()}
