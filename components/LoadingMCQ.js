@@ -9,7 +9,7 @@ import Animated, {
   Easing
 } from 'react-native-reanimated';
 
-const LoadingScreen = ({ quote }) => {
+const LoadingMCQ = ({ quote }) => {
   // Array of motivational quotes
   const quotes = [
     "The only thing we have to fear is fear itself. – Franklin D. Roosevelt",
@@ -129,7 +129,7 @@ const LoadingScreen = ({ quote }) => {
       </View>
       
       <Animated.Text style={[styles.loadingText, animatedTextStyle]}>
-        Loading the latest news
+        Loading Questions...
       </Animated.Text>
       
       <Animated.Text style={[styles.quoteText, animatedTextStyle]}>
@@ -174,4 +174,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoadingScreen;
+export default LoadingMCQ;

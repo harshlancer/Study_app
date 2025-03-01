@@ -1,12 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+} from 'react-native';
 import fetchMCQs from './fetchMCQs';
+import LoadingScreen from './LoadingScreen';
+import LoadingMCQ from './LoadingMCQ';
 const MCQScreen = () => {
   const [mcqs, setMcqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [showExplanations, setShowExplanations] = useState({});
-  
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -20,38 +29,34 @@ const MCQScreen = () => {
   const handleSelectOption = (questionIndex, optionIndex) => {
     setSelectedAnswers(prev => ({
       ...prev,
-      [questionIndex]: optionIndex
+      [questionIndex]: optionIndex,
     }));
   };
 
-  const toggleExplanation = (questionIndex) => {
+  const toggleExplanation = questionIndex => {
     setShowExplanations(prev => ({
       ...prev,
-      [questionIndex]: !prev[questionIndex]
+      [questionIndex]: !prev[questionIndex],
     }));
   };
 
-  const getOptionLabel = (index) => {
+  const getOptionLabel = index => {
     return String.fromCharCode(65 + index); // A, B, C, D...
   };
 
   const isCorrectAnswer = (mcq, selectedOptionIndex) => {
     if (selectedOptionIndex === undefined) return false;
-    
+
     // Find which option matches the correct answer text
-    const correctOptionIndex = mcq.options.findIndex(
-      option => option.toLowerCase().includes(mcq.correctAnswer.toLowerCase())
+    const correctOptionIndex = mcq.options.findIndex(option =>
+      option.toLowerCase().includes(mcq.correctAnswer.toLowerCase()),
     );
-    
+
     return selectedOptionIndex === correctOptionIndex;
   };
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading questions...</Text>
-      </View>
-    );
+    return <LoadingMCQ />;
   }
 
   return (
@@ -59,57 +64,60 @@ const MCQScreen = () => {
       <StatusBar color="#FF5722" barStyle="dark-content" />
       <Text style={styles.title}>India Government & Politics Quiz</Text>
       <Text style={styles.subtitle}>{mcqs.length} Questions</Text>
-      
+
       {mcqs.map((mcq, questionIndex) => (
         <View key={questionIndex} style={styles.questionContainer}>
-          <Text style={styles.questionNumber}>Question {questionIndex + 1}</Text>
+          <Text style={styles.questionNumber}>
+            Question {questionIndex + 1}
+          </Text>
           <Text style={styles.questionText}>{mcq.question}</Text>
-          
+
           <View style={styles.optionsContainer}>
             {mcq.options.map((option, optionIndex) => (
               <TouchableOpacity
                 key={optionIndex}
                 style={[
                   styles.optionButton,
-                  selectedAnswers[questionIndex] === optionIndex && styles.selectedOption,
-                  showExplanations[questionIndex] && 
-                    isCorrectAnswer(mcq, optionIndex) && 
+                  selectedAnswers[questionIndex] === optionIndex &&
+                    styles.selectedOption,
+                  showExplanations[questionIndex] &&
+                    isCorrectAnswer(mcq, optionIndex) &&
                     styles.correctOption,
-                  showExplanations[questionIndex] && 
+                  showExplanations[questionIndex] &&
                     selectedAnswers[questionIndex] === optionIndex &&
-                    !isCorrectAnswer(mcq, optionIndex) && 
-                    styles.incorrectOption
+                    !isCorrectAnswer(mcq, optionIndex) &&
+                    styles.incorrectOption,
                 ]}
-                onPress={() => handleSelectOption(questionIndex, optionIndex)}
-              >
-                <Text style={styles.optionLabel}>{getOptionLabel(optionIndex)}</Text>
+                onPress={() => handleSelectOption(questionIndex, optionIndex)}>
+                <Text style={styles.optionLabel}>
+                  {getOptionLabel(optionIndex)}
+                </Text>
                 <Text style={styles.optionText}>{option}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          
+
           <View style={styles.actionContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.showAnswerButton}
-              onPress={() => toggleExplanation(questionIndex)}
-            >
+              onPress={() => toggleExplanation(questionIndex)}>
               <Text style={styles.showAnswerButtonText}>
-                {showExplanations[questionIndex] ? 'Hide Answer' : 'Show Answer'}
+                {showExplanations[questionIndex]
+                  ? 'Hide Answer'
+                  : 'Show Answer'}
               </Text>
             </TouchableOpacity>
           </View>
-          
+
           {showExplanations[questionIndex] && (
             <View style={styles.explanationContainer}>
               <Text style={styles.correctAnswerText}>
                 Correct Answer: {mcq.correctAnswer}
               </Text>
-              <Text style={styles.explanationText}>
-                {mcq.explanation}
-              </Text>
+              <Text style={styles.explanationText}>{mcq.explanation}</Text>
             </View>
           )}
-          
+
           <View style={styles.divider} />
         </View>
       ))}
@@ -148,7 +156,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,

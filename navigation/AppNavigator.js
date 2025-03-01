@@ -1,6 +1,6 @@
 import React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
-import {createStackNavigator} from '@react-navigation/stack';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import National from '../components/National';
@@ -10,6 +10,7 @@ import World from '../components/World';
 import MainLayout from '../components/MainLayout';
 import MCQScreen from '../components/MCQScreen';
 import WCQscreen from '../components/WCQscreen';
+import SplashScreen from '../screens/SplashScreen';
 
 const Stack = createStackNavigator();
 
@@ -17,6 +18,7 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
+        initialRouteName="Splash"
         screenOptions={{
           headerStyle: {
             backgroundColor: '#FFFFFF',
@@ -30,6 +32,11 @@ const AppNavigator = () => {
           headerTintColor: '#000000',
         }}>
         <Stack.Screen
+          name="Splash"
+          component={SplashScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="Home"
           options={{
             headerShown: false,
@@ -41,6 +48,7 @@ const AppNavigator = () => {
             </MainLayout>
           )}
         </Stack.Screen>
+        {/* Rest of your screens remain the same */}
         <Stack.Screen
           name="National MCQs"
           options={{
