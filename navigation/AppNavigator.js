@@ -1,6 +1,6 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import {NavigationContainer} from '@react-navigation/native';
+import {createStackNavigator} from '@react-navigation/stack';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import National from '../components/National';
@@ -11,6 +11,8 @@ import MainLayout from '../components/MainLayout';
 import MCQScreen from '../components/MCQScreen';
 import WCQscreen from '../components/WCQscreen';
 import SplashScreen from '../screens/SplashScreen';
+import WeeklyCurrentAffairs from '../components/WeeklyCurrentAffairs';
+import PDFViewerScreen from '../screens/PDFViewerScreen';
 
 const Stack = createStackNavigator();
 
@@ -34,7 +36,12 @@ const AppNavigator = () => {
         <Stack.Screen
           name="Splash"
           component={SplashScreen}
-          options={{ headerShown: false }}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="PDFViewer"
+          component={PDFViewerScreen}
+          options={({route}) => ({title: route.params.title || 'PDF Viewer'})}
         />
         <Stack.Screen
           name="Home"
@@ -95,6 +102,18 @@ const AppNavigator = () => {
           {props => (
             <MainLayout showCategoryBar={true}>
               <World {...props} />
+            </MainLayout>
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="WeeklyCurrentAffairs"
+          options={{
+            headerShown: false,
+            headerTransparent: true,
+          }}>
+          {props => (
+            <MainLayout showCategoryBar={true}>
+              <WeeklyCurrentAffairs {...props} />
             </MainLayout>
           )}
         </Stack.Screen>

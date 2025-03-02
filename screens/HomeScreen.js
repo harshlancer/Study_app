@@ -22,7 +22,7 @@ const categories = [
   {name: 'World', icon: 'earth', color: '#4CAF50'},
   {name: 'National MCQs', icon: 'lightbulb-on', color: '#9C27B0'},
   {name: 'World MCQs', icon: 'head-check-outline', color: '#FF5722'},
-  {name: 'Tech', icon: 'laptop', color: '#2196F3'},
+  {name: 'WeeklyCurrentAffairs', icon: 'laptop', color: '#2196F3'},
   {name: 'Bookmarks', icon: 'bookmark', color: '#E91E63'},
 ];
 

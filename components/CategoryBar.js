@@ -18,7 +18,7 @@ const CATEGORIES = [
   'World',
   'National MCQs',
   'World MCQs',
-  'Tech',
+  'WeeklyCurrentAffairs',
   'Bookmarks',
 ];
 
@@ -28,7 +28,7 @@ const CATEGORY_COLORS = {
   'World': '#4CAF50',
   'National MCQs': '#9C27B0',
   'World MCQs': '#FF5722',
-  'Tech': '#2196F3',
+  'WeeklyCurrentAffairs': '#2196F3',
   'Bookmarks': '#E91E63',
 };
 
