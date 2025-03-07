@@ -5,14 +5,25 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  StatusBar,
+  ActivityIndicator,
+  SafeAreaView,
+  ImageBackground,
+  Dimensions,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/Ionicons';
 import fetchMCQs from './fetchwcq';
 import LoadingMCQ from './LoadingMCQ';
+
+const {width} = Dimensions.get('window');
+
 const WCQscreen = () => {
   const [mcqs, setMcqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [showExplanations, setShowExplanations] = useState({});
+  const [score, setScore] = useState({correct: 0, total: 0});
 
   useEffect(() => {
     const loadData = async () => {
@@ -25,10 +36,38 @@ const WCQscreen = () => {
   }, []);
 
   const handleSelectOption = (questionIndex, optionIndex) => {
+    // If already answered, don't allow changes
+    if (selectedAnswers[questionIndex] !== undefined) return;
+    
     setSelectedAnswers(prev => ({
       ...prev,
       [questionIndex]: optionIndex,
     }));
+    
+    // Check if answer is correct and update score
+    const mcq = mcqs[questionIndex];
+    const isCorrect = isCorrectAnswer(mcq, optionIndex);
+    
+    if (isCorrect) {
+      setScore(prev => ({
+        ...prev,
+        correct: prev.correct + 1,
+        total: prev.total + 1,
+      }));
+    } else {
+      setScore(prev => ({
+        ...prev,
+        total: prev.total + 1,
+      }));
+    }
+    
+    // Auto show explanation after selection
+    setTimeout(() => {
+      setShowExplanations(prev => ({
+        ...prev,
+        [questionIndex]: true,
+      }));
+    }, 500);
   };
 
   const toggleExplanation = questionIndex => {
@@ -53,160 +92,336 @@ const WCQscreen = () => {
     return selectedOptionIndex === correctOptionIndex;
   };
 
+  const getCorrectOptionIndex = (mcq) => {
+    // Find which option matches the correct answer text
+    return mcq.options.findIndex(option =>
+      mcq.correctAnswer.toLowerCase().includes(option.toLowerCase())
+    );
+  };
+
   if (loading) {
     return <LoadingMCQ />;
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>India Government & Politics Quiz</Text>
-      <Text style={styles.subtitle}>{mcqs.length} Questions</Text>
-
-      {mcqs.map((mcq, questionIndex) => (
-        <View key={questionIndex} style={styles.questionContainer}>
-          <Text style={styles.questionNumber}>
-            Question {questionIndex + 1}
-          </Text>
-          <Text style={styles.questionText}>{mcq.question}</Text>
-
-          <View style={styles.optionsContainer}>
-            {mcq.options.map((option, optionIndex) => (
-              <TouchableOpacity
-                key={optionIndex}
-                style={[
-                  styles.optionButton,
-                  selectedAnswers[questionIndex] === optionIndex &&
-                    styles.selectedOption,
-                  showExplanations[questionIndex] &&
-                    isCorrectAnswer(mcq, optionIndex) &&
-                    styles.correctOption,
-                  showExplanations[questionIndex] &&
-                    selectedAnswers[questionIndex] === optionIndex &&
-                    !isCorrectAnswer(mcq, optionIndex) &&
-                    styles.incorrectOption,
-                ]}
-                onPress={() => handleSelectOption(questionIndex, optionIndex)}>
-                <Text style={styles.optionLabel}>
-                  {getOptionLabel(optionIndex)}
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor="#6A1B9A" barStyle="light-content" />
+      <ImageBackground
+        source={require('./image.png')} // Add this image to your assets folder
+        style={styles.backgroundImage}>
+        <LinearGradient
+          colors={['rgba(106, 27, 154, 0.9)', 'rgba(40, 53, 147, 0.95)']}
+          style={styles.gradientOverlay}>
+          <ScrollView style={styles.container}>
+            <View style={styles.header}>
+              <Text style={styles.title}>India Government & Politics Quiz</Text>
+              <View style={styles.scoreContainer}>
+                <Text style={styles.scoreText}>
+                  Score: {score.correct}/{score.total}
                 </Text>
-                <Text style={styles.optionText}>{option}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.actionContainer}>
-            <TouchableOpacity
-              style={styles.showAnswerButton}
-              onPress={() => toggleExplanation(questionIndex)}>
-              <Text style={styles.showAnswerButtonText}>
-                {showExplanations[questionIndex]
-                  ? 'Hide Answer'
-                  : 'Show Answer'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {showExplanations[questionIndex] && (
-            <View style={styles.explanationContainer}>
-              <Text style={styles.correctAnswerText}>
-                Correct Answer: {mcq.correctAnswer}
-              </Text>
-              <Text style={styles.explanationText}>{mcq.explanation}</Text>
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      {width: `${score.total > 0 ? (score.correct / score.total) * 100 : 0}%`}
+                    ]} 
+                  />
+                </View>
+              </View>
+              <Text style={styles.subtitle}>{mcqs.length} Questions</Text>
             </View>
-          )}
 
-          <View style={styles.divider} />
-        </View>
-      ))}
-    </ScrollView>
+            {mcqs.map((mcq, questionIndex) => {
+              const correctOptionIndex = getCorrectOptionIndex(mcq);
+              const userSelected = selectedAnswers[questionIndex];
+              const showExplanation = showExplanations[questionIndex];
+              
+              return (
+                <View key={questionIndex} style={styles.questionContainer}>
+                  <LinearGradient
+                    colors={['#7B1FA2', '#6A1B9A']}
+                    style={styles.questionHeader}>
+                    <Text style={styles.questionNumber}>
+                      Question {questionIndex + 1}
+                    </Text>
+                    {userSelected !== undefined && (
+                      <View style={[
+                        styles.resultBadge,
+                        userSelected === correctOptionIndex 
+                          ? styles.correctBadge 
+                          : styles.incorrectBadge
+                      ]}>
+                        <Icon 
+                          name={userSelected === correctOptionIndex ? 'checkmark' : 'close'} 
+                          size={12} 
+                          color="white" 
+                        />
+                      </View>
+                    )}
+                  </LinearGradient>
+                  
+                  <View style={styles.questionContent}>
+                    <Text style={styles.questionText}>{mcq.question}</Text>
+
+                    <View style={styles.optionsContainer}>
+                      {mcq.options.map((option, optionIndex) => {
+                        const isSelected = selectedAnswers[questionIndex] === optionIndex;
+                        const isCorrect = optionIndex === correctOptionIndex;
+                        const showResult = showExplanation || (isSelected && isCorrect);
+                        
+                        return (
+                          <TouchableOpacity
+                            key={optionIndex}
+                            style={[
+                              styles.optionButton,
+                              isSelected && styles.selectedOption,
+                              showResult && isCorrect && styles.correctOption,
+                              showResult && isSelected && !isCorrect && styles.incorrectOption,
+                            ]}
+                            onPress={() => handleSelectOption(questionIndex, optionIndex)}>
+                            <View style={[
+                              styles.optionLabelContainer,
+                              isSelected && styles.selectedOptionLabel,
+                              showResult && isCorrect && styles.correctOptionLabel,
+                              showResult && isSelected && !isCorrect && styles.incorrectOptionLabel,
+                            ]}>
+                              <Text style={styles.optionLabel}>
+                                {getOptionLabel(optionIndex)}
+                              </Text>
+                            </View>
+                            <Text style={[
+                              styles.optionText,
+                              isSelected && styles.selectedOptionText,
+                            ]}>
+                              {option}
+                            </Text>
+                            {showResult && isCorrect && (
+                              <View style={styles.checkmarkContainer}>
+                                <Icon name="checkmark-circle" size={20} color="#4CAF50" />
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    <View style={styles.actionContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.showAnswerButton,
+                          showExplanation && styles.hideAnswerButton
+                        ]}
+                        onPress={() => toggleExplanation(questionIndex)}>
+                        <Text style={styles.showAnswerButtonText}>
+                          {showExplanation ? 'Hide Explanation' : 'Show Explanation'}
+                        </Text>
+                        <Icon 
+                          name={showExplanation ? 'chevron-up' : 'chevron-down'}
+                          size={16}
+                          color="white"
+                          style={{marginLeft: 5}}
+                        />
+                      </TouchableOpacity>
+                    </View>
+
+                    {showExplanation && (
+                      <View style={styles.explanationContainer}>
+                        <Text style={styles.correctAnswerText}>
+                          Correct Answer: {mcq.correctAnswer}
+                        </Text>
+                        <Text style={styles.explanationText}>{mcq.explanation}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+
+            {/* Add some bottom padding for better UX */}
+            <View style={{height: 40}} />
+          </ScrollView>
+        </LinearGradient>
+      </ImageBackground>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#6A1B9A',
+  },
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+  },
+  gradientOverlay: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#f5f5f7',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  header: {
     alignItems: 'center',
-    padding: 20,
+    marginBottom: 20,
+    paddingVertical: 12,
   },
   title: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginVertical: 16,
-    color: '#333',
+    marginVertical: 8,
+    color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: {width: 1, height: 1},
+    textShadowRadius: 3,
+  },
+  scoreContainer: {
+    width: '80%',
+    marginVertical: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    padding: 10,
+    alignItems: 'center',
+  },
+  scoreText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 5,
+  },
+  progressBar: {
+    height: 10,
+    width: '90%',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 5,
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 24,
-    color: '#666',
+    marginTop: 8,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   questionContainer: {
-    marginBottom: 28,
-    backgroundColor: 'white',
+    marginBottom: 24,
     borderRadius: 12,
-    padding: 16,
+    overflow: 'hidden',
+    backgroundColor: 'white',
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 3,
+  },
+  questionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   questionNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 8,
+    fontSize: 15,
+    fontWeight: '700',
+    color: 'white',
+  },
+  resultBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  correctBadge: {
+    backgroundColor: '#4CAF50',
+  },
+  incorrectBadge: {
+    backgroundColor: '#F44336',
+  },
+  questionContent: {
+    padding: 16,
   },
   questionText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
     marginBottom: 16,
     lineHeight: 24,
+    color: '#333',
   },
   optionsContainer: {
     marginBottom: 16,
   },
   optionButton: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 12,
+    alignItems: 'center',
+    paddingVertical: 14,
     paddingHorizontal: 16,
     marginVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f5',
+    borderRadius: 10,
+    backgroundColor: '#f5f5f7',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#E0E0E0',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
-  selectedOption: {
-    backgroundColor: '#e6f2ff',
-    borderColor: '#4a90e2',
-  },
-  correctOption: {
-    backgroundColor: '#e7f7e7',
-    borderColor: '#5cb85c',
-  },
-  incorrectOption: {
-    backgroundColor: '#ffeeee',
-    borderColor: '#d9534f',
+  optionLabelContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#E0E0E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   optionLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginRight: 8,
-    color: '#444',
-    width: 20,
+    color: '#555',
+  },
+  selectedOption: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#81C784',
+  },
+  selectedOptionLabel: {
+    backgroundColor: '#81C784',
+  },
+  selectedOptionText: {
+    fontWeight: '600',
+  },
+  correctOption: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#4CAF50',
+  },
+  correctOptionLabel: {
+    backgroundColor: '#4CAF50',
+  },
+  incorrectOption: {
+    backgroundColor: '#FFEBEE',
+    borderColor: '#E57373',
+  },
+  incorrectOptionLabel: {
+    backgroundColor: '#E57373',
   },
   optionText: {
     fontSize: 15,
     flex: 1,
     lineHeight: 22,
+    color: '#444',
+  },
+  checkmarkContainer: {
+    marginLeft: 8,
   },
   actionContainer: {
     flexDirection: 'row',
@@ -214,12 +429,20 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   showAnswerButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#4a90e2',
-    borderRadius: 20,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    backgroundColor: '#7B1FA2',
+    borderRadius: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+  },
+  hideAnswerButton: {
+    backgroundColor: '#5E35B1',
   },
   showAnswerButtonText: {
     color: 'white',
@@ -228,27 +451,22 @@ const styles = StyleSheet.create({
   },
   explanationContainer: {
     marginTop: 16,
-    padding: 12,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
+    padding: 15,
+    backgroundColor: '#F3E5F5',
+    borderRadius: 10,
     borderLeftWidth: 4,
-    borderLeftColor: '#4a90e2',
+    borderLeftColor: '#9C27B0',
   },
   correctAnswerText: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#2c7a2c',
+    color: '#4CAF50',
     marginBottom: 8,
   },
   explanationText: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 22,
     color: '#333',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#eee',
-    marginTop: 16,
   },
 });
 

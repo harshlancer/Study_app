@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   View,
-  Animated,
   Dimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -35,26 +34,20 @@ const CATEGORY_COLORS = {
 const CategoryBar = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const [selectedCategory, setSelectedCategory] = useState('National');
   const scrollViewRef = useRef(null);
-  const indicatorAnim = useRef(new Animated.Value(0)).current;
   const categoryPositions = useRef({}).current;
+  
+  // Always initialize with the current route name
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    const currentRouteName = route.name;
+    return CATEGORIES.includes(currentRouteName) ? currentRouteName : 'National';
+  });
   
   // Sync selected category with current route
   useEffect(() => {
     const currentRouteName = route.name;
     if (CATEGORIES.includes(currentRouteName)) {
       setSelectedCategory(currentRouteName);
-      
-      // Animate the indicator to the new position
-      if (categoryPositions[currentRouteName]) {
-        Animated.spring(indicatorAnim, {
-          toValue: categoryPositions[currentRouteName],
-          friction: 6,
-          tension: 40,
-          useNativeDriver: true,
-        }).start();
-      }
       
       // Scroll to make the selected category visible
       scrollToCategory(currentRouteName);
@@ -72,21 +65,10 @@ const CategoryBar = () => {
 
   // Handle navigation and category selection
   const handleCategoryPress = useCallback(
-    (category, position) => {
+    (category) => {
       if (CATEGORIES.includes(category)) {
         setSelectedCategory(category);
         navigation.navigate(category);
-        
-        // Store the position for the indicator animation
-        categoryPositions[category] = position;
-        
-        // Animate the indicator
-        Animated.spring(indicatorAnim, {
-          toValue: position,
-          friction: 6,
-          tension: 40,
-          useNativeDriver: true,
-        }).start();
       }
     },
     [navigation],
@@ -96,11 +78,6 @@ const CategoryBar = () => {
   const measurePosition = (category, event) => {
     const { x } = event.nativeEvent.layout;
     categoryPositions[category] = x;
-    
-    // Initialize the indicator position
-    if (category === selectedCategory) {
-      indicatorAnim.setValue(x);
-    }
   };
 
   return (
@@ -108,17 +85,6 @@ const CategoryBar = () => {
       <LinearGradient
         colors={['#121212', '#1E1E1E']}
         style={styles.backgroundGradient}
-      />
-      
-      {/* Animated indicator */}
-      <Animated.View
-        style={[
-          styles.indicator,
-          {
-            backgroundColor: CATEGORY_COLORS[selectedCategory] || '#FF5722',
-            transform: [{ translateX: indicatorAnim }]
-          }
-        ]}
       />
       
       <ScrollView
@@ -135,7 +101,7 @@ const CategoryBar = () => {
               key={category}
               activeOpacity={0.7}
               onLayout={(e) => measurePosition(category, e)}
-              onPress={() => handleCategoryPress(category, categoryPositions[category])}>
+              onPress={() => handleCategoryPress(category)}>
               <View
                 style={[
                   styles.categoryButton,
@@ -207,15 +173,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  // Animated indicator - small dot that moves under the selected category
-  indicator: {
-    position: 'absolute',
-    bottom: -2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginLeft: 20,
-  },
   // Edge shadows to indicate scrollability
   leftShadow: {
     position: 'absolute',
@@ -223,6 +180,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 20,
+    zIndex: 5,
   },
   rightShadow: {
     position: 'absolute',
@@ -230,6 +188,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 20,
+    zIndex: 5,
   },
 });
 
