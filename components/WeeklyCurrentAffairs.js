@@ -22,7 +22,7 @@ import Pdf from 'react-native-pdf';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import RNFetchBlob from 'rn-fetch-blob';
+import RNFetchBlob from 'react-native-blob-util';
 
 const {width, height} = Dimensions.get('window');
 

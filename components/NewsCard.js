@@ -22,7 +22,6 @@ import Animated, {
   Extrapolate,
 } from 'react-native-reanimated';
 import {WebView} from 'react-native-webview';
-import ViewShot from 'react-native-view-shot';
 
 const {width} = Dimensions.get('window');
 
@@ -39,7 +38,6 @@ const NewsCard = ({
   const [webViewVisible, setWebViewVisible] = useState(false);
   const [isLongPressing, setIsLongPressing] = useState(false);
   const longPressTimeout = useRef(null);
-  const viewShotRef = useRef();
 
   // Animation values
   const expandProgress = useSharedValue(0);
