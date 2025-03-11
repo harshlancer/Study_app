@@ -6,7 +6,7 @@ buildscript {
         targetSdkVersion = 34
         ndkVersion = "27.1.12297006"
         kotlinVersion = "2.0.21"
-        react_native_reanimated="3.16.7"
+        react_native_reanimated="3.17.0"
     }
     repositories {
         google()

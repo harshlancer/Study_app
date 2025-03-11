@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { 
-  View, 
-  FlatList, 
-  RefreshControl, 
-  StatusBar, 
+import {
+  View,
+  FlatList,
+  RefreshControl,
+  StatusBar,
   StyleSheet,
   Animated,
-  Text
+  Text,
 } from 'react-native';
 import { LinearGradient } from 'react-native-linear-gradient';
 import HTMLParser from 'react-native-html-parser';
@@ -14,6 +14,7 @@ import NewsCard from './NewsCard';
 import { useNavigation } from '@react-navigation/native';
 import { saveBookmark, removeBookmark } from './bookmarkUtils';
 import LoadingScreen from './LoadingScreen';
+import notifee, { AndroidStyle } from '@notifee/react-native'; // Import AndroidStyle
 
 const National = () => {
   const [newsList, setNewsList] = useState([]);
@@ -28,6 +29,46 @@ const National = () => {
     fetchAllNews();
   }, []);
 
+  useEffect(() => {
+    if (newsList.length > 0) {
+      const firstNewsItem = newsList[0];
+      sendNotification(firstNewsItem.title, firstNewsItem.imageUrl);
+    }
+  }, [newsList]);
+  const sendNotification = async (title, imageUrl) => {
+    try {
+      // Create a channel (required for Android)
+      const channelId = await notifee.createChannel({
+        id: 'default',
+        name: 'Default Channel',
+      });
+  
+      // Display the notification
+      await notifee.displayNotification({
+        title: title,
+        body: 'Check out this news!',
+        android: {
+          channelId,
+          largeIcon: imageUrl, // Use the image as the large icon
+          style: {
+            type: AndroidStyle.BIGPICTURE, // Use BIGPICTURE style for Android
+            picture: imageUrl, // Set the image as the big picture
+          },
+        },
+        ios: {
+          attachments: [
+            {
+              url: imageUrl, // Use the image as an attachment for iOS
+            },
+          ],
+        },
+      });
+  
+      console.log('Notification sent successfully!');
+    } catch (error) {
+      console.error('Error sending notification:', error);
+    }
+  };
   const handleBookmark = async (newsItem, isBookmarked) => {
     if (isBookmarked) {
       await saveBookmark(newsItem);

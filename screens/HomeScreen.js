@@ -9,10 +9,12 @@ import {
   StatusBar,
   Dimensions,
   SafeAreaView,
+  Button,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
+import notifee from '@notifee/react-native';
 
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = width * 0.42;
@@ -34,7 +36,17 @@ const HomeScreen = () => {
   
   const headerAnim = useRef(new Animated.Value(0)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
-  
+
+  const onDisplayNotification = async () => {
+    await notifee.displayNotification({
+      title: 'Test Notification',
+      body: 'This is a test notification from notifee!',
+      android: {
+        channelId: 'default',
+      },
+    });
+  };
+
   // Animation for initial load
   useEffect(() => {
     Animated.sequence([
@@ -150,6 +162,9 @@ const HomeScreen = () => {
             );
           }}
         />
+
+        {/* Button to trigger notification */}
+        <Button title="Test Notification" onPress={onDisplayNotification} />
       </View>
     </SafeAreaView>
   );
