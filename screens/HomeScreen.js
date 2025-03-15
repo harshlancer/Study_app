@@ -9,23 +9,21 @@ import {
   StatusBar,
   Dimensions,
   SafeAreaView,
-  Button,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
-import notifee from '@notifee/react-native';
 
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = width * 0.42;
 
 const categories = [
-  {name: 'National', icon: 'flag', color: '#5D5DFB'},
-  {name: 'World', icon: 'earth', color: '#4CAF50'},
-  {name: 'National MCQs', icon: 'lightbulb-on', color: '#9C27B0'},
-  {name: 'World MCQs', icon: 'head-check-outline', color: '#FF5722'},
-  {name: 'WeeklyCurrentAffairs', icon: 'laptop', color: '#2196F3'},
-  {name: 'Bookmarks', icon: 'bookmark', color: '#E91E63'},
+  { name: 'National', icon: 'flag', color: '#5D5DFB' },
+  { name: 'World', icon: 'earth', color: '#4CAF50' },
+  { name: 'National MCQs', icon: 'lightbulb-on', color: '#9C27B0' },
+  { name: 'World MCQs', icon: 'head-check-outline', color: '#FF5722' },
+  { name: 'WeeklyCurrentAffairs', icon: 'laptop', color: '#2196F3' },
+  { name: 'Bookmarks', icon: 'bookmark', color: '#E91E63' },
 ];
 
 const HomeScreen = () => {
@@ -33,19 +31,9 @@ const HomeScreen = () => {
   const animatedValues = useRef(
     categories.map(() => new Animated.Value(0)),
   ).current;
-  
+
   const headerAnim = useRef(new Animated.Value(0)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
-
-  const onDisplayNotification = async () => {
-    await notifee.displayNotification({
-      title: 'Test Notification',
-      body: 'This is a test notification from notifee!',
-      android: {
-        channelId: 'default',
-      },
-    });
-  };
 
   // Animation for initial load
   useEffect(() => {
@@ -63,7 +51,7 @@ const HomeScreen = () => {
     ]).start();
   }, []);
 
-  const handlePressIn = index => {
+  const handlePressIn = (index) => {
     Animated.spring(animatedValues[index], {
       toValue: 1,
       friction: 3,
@@ -71,7 +59,7 @@ const HomeScreen = () => {
     }).start();
   };
 
-  const handlePressOut = index => {
+  const handlePressOut = (index) => {
     Animated.spring(animatedValues[index], {
       toValue: 0,
       friction: 3,
@@ -87,26 +75,28 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#121212" barStyle="light-content" />
-      
+
       <View style={styles.container}>
         <LinearGradient
           colors={['#121212', '#1E1E1E']}
           style={styles.gradient}
         />
-        
+
         {/* Accent circles for futuristic feel */}
         <View style={styles.accentCircle1} />
         <View style={styles.accentCircle2} />
-        
+
         {/* Header */}
         <Animated.View
           style={[
             styles.header,
-            { transform: [{ translateY: headerTranslateY }] }
-          ]}>
+            { transform: [{ translateY: headerTranslateY }] },
+          ]}
+        >
           <LinearGradient
             colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
-            style={styles.headerGradient}>
+            style={styles.headerGradient}
+          >
             <Animated.Text style={[styles.headerTitle, { opacity: titleOpacity }]}>
               Editorial
             </Animated.Text>
@@ -120,15 +110,15 @@ const HomeScreen = () => {
         <FlatList
           data={categories}
           numColumns={2}
-          keyExtractor={item => item.name}
+          keyExtractor={(item) => item.name}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.categoryContainer}
-          renderItem={({item, index}) => {
+          renderItem={({ item, index }) => {
             const scale = animatedValues[index].interpolate({
               inputRange: [0, 1],
               outputRange: [1, 1.05],
             });
-            
+
             const rotate = animatedValues[index].interpolate({
               inputRange: [0, 1],
               outputRange: ['0deg', '5deg'],
@@ -139,19 +129,22 @@ const HomeScreen = () => {
                 onPressIn={() => handlePressIn(index)}
                 onPressOut={() => handlePressOut(index)}
                 onPress={() => navigation.navigate(item.name)}
-                activeOpacity={0.8}>
+                activeOpacity={0.8}
+              >
                 <Animated.View
                   style={[
                     styles.categoryButton,
                     {
                       transform: [{ scale }, { rotate }],
                     },
-                  ]}>
+                  ]}
+                >
                   <LinearGradient
                     colors={[`${item.color}99`, item.color]}
-                    start={{x: 0, y: 0}}
-                    end={{x: 1, y: 1}}
-                    style={styles.cardGradient}>
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.cardGradient}
+                  >
                     <View style={styles.iconContainer}>
                       <Icon name={item.icon} size={32} color="#fff" />
                     </View>
@@ -162,9 +155,6 @@ const HomeScreen = () => {
             );
           }}
         />
-
-        {/* Button to trigger notification */}
-        <Button title="Test Notification" onPress={onDisplayNotification} />
       </View>
     </SafeAreaView>
   );
