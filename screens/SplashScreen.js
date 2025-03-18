@@ -6,10 +6,11 @@ import {
   Animated,
   Dimensions,
   StatusBar,
+  Image
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-
+import picOne from "./image.png";
 const {width} = Dimensions.get('window');
 
 const SplashScreen = ({navigation}) => {
@@ -130,7 +131,7 @@ const SplashScreen = ({navigation}) => {
           end={{x: 1, y: 1}}
           style={styles.logoGradient}>
           <Animated.View style={{transform: [{rotate: spin}]}}>
-            <Icon name="pencil" size={50} color="#FFF" />
+          <Image source={picOne} style={styles.image} />
           </Animated.View>
         </LinearGradient>
       </Animated.View>
@@ -183,6 +184,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 40,
+  },
+  image: {
+    width: 80, // Adjust the width and height as needed
+    height: 80,
+    resizeMode: 'contain', // Adjust the resizeMode as needed
   },
   logoGradient: {
     width: 100,

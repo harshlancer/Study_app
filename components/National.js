@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import {
   View,
   FlatList,
@@ -8,13 +8,13 @@ import {
   Animated,
   Text,
 } from 'react-native';
-import { LinearGradient } from 'react-native-linear-gradient';
+import {LinearGradient} from 'react-native-linear-gradient';
 import HTMLParser from 'react-native-html-parser';
 import NewsCard from './NewsCard';
-import { useNavigation } from '@react-navigation/native';
-import { saveBookmark, removeBookmark } from './bookmarkUtils';
+import {useNavigation} from '@react-navigation/native';
+import {saveBookmark, removeBookmark} from './bookmarkUtils';
 import LoadingScreen from './LoadingScreen';
-import { scheduleNotification } from './NotificationScheduler'; // Import the scheduler
+import {scheduleNotification} from './NotificationScheduler'; // Import the scheduler
 
 const National = () => {
   const [newsList, setNewsList] = useState([]);
@@ -357,7 +357,7 @@ const National = () => {
   const fetchAllNews = async () => {
     try {
       if (!refreshing) setLoading(true);
-  
+
       let gkTodayNews = [];
       for (let page = 1; page <= 5; page++) {
         try {
@@ -370,132 +370,169 @@ const National = () => {
           );
         }
       }
-  
+
       const jagranNews = await fetchJagranNews();
       const indianExpressNews = await fetchIndianExpressNews();
-  
+
       const allNews = [...jagranNews, ...gkTodayNews, ...indianExpressNews];
-  
+
       // Parse dates from different formats to Date objects
       const parseDateString = (dateStr, source) => {
         if (!dateStr) return new Date(0); // Default to epoch if no date
-        
+
         const now = new Date();
         const normalizedDateStr = dateStr.toLowerCase().trim();
-        
+
         // Case 1: Relative time (e.g., "1 day ago", "2 days ago") - Jagran Josh
-        if (normalizedDateStr.includes('day ago') || normalizedDateStr.includes('days ago')) {
+        if (
+          normalizedDateStr.includes('day ago') ||
+          normalizedDateStr.includes('days ago')
+        ) {
           const daysAgo = parseInt(normalizedDateStr.match(/\d+/)?.[0] || '0');
           return new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
         }
-        
+
         // Case 2: Relative time with hours
-        if (normalizedDateStr.includes('hour ago') || normalizedDateStr.includes('hours ago')) {
+        if (
+          normalizedDateStr.includes('hour ago') ||
+          normalizedDateStr.includes('hours ago')
+        ) {
           const hoursAgo = parseInt(normalizedDateStr.match(/\d+/)?.[0] || '0');
           return new Date(now.getTime() - hoursAgo * 60 * 60 * 1000);
         }
-        
+
         // Case 3: Relative time with minutes
-        if (normalizedDateStr.includes('minute ago') || normalizedDateStr.includes('minutes ago')) {
-          const minutesAgo = parseInt(normalizedDateStr.match(/\d+/)?.[0] || '0');
+        if (
+          normalizedDateStr.includes('minute ago') ||
+          normalizedDateStr.includes('minutes ago')
+        ) {
+          const minutesAgo = parseInt(
+            normalizedDateStr.match(/\d+/)?.[0] || '0',
+          );
           return new Date(now.getTime() - minutesAgo * 60 * 1000);
         }
-        
+
         // Case 4: Today or Yesterday
         if (normalizedDateStr.includes('today')) {
           return new Date(now.setHours(0, 0, 0, 0));
         }
-        
+
         if (normalizedDateStr.includes('yesterday')) {
           const yesterday = new Date(now);
           yesterday.setDate(yesterday.getDate() - 1);
           yesterday.setHours(0, 0, 0, 0);
           return yesterday;
         }
-        
+
         // Case 5: Format like "March 13, 2025" (GKToday)
         const monthDayYearPattern = /([a-z]+)\s+(\d{1,2}),?\s+(\d{4})/i;
         const monthDayYearMatch = normalizedDateStr.match(monthDayYearPattern);
         if (monthDayYearMatch) {
           const [_, month, day, year] = monthDayYearMatch;
-          
+
           // Case 5.1: Format with time like "March 13, 2025 8:08 pm" (Indian Express)
           const timePattern = /(\d{1,2})[:.](\d{2})\s*(am|pm)/i;
           const timeMatch = normalizedDateStr.match(timePattern);
-          
+
           if (timeMatch) {
             const [__, hours, minutes, ampm] = timeMatch;
             let hour = parseInt(hours);
-            
+
             // Convert 12-hour format to 24-hour format
             if (ampm.toLowerCase() === 'pm' && hour < 12) {
               hour += 12;
             } else if (ampm.toLowerCase() === 'am' && hour === 12) {
               hour = 0;
             }
-            
-            return new Date(year, getMonthIndex(month), parseInt(day), hour, parseInt(minutes));
+
+            return new Date(
+              year,
+              getMonthIndex(month),
+              parseInt(day),
+              hour,
+              parseInt(minutes),
+            );
           }
-          
+
           // Just date without time
           return new Date(year, getMonthIndex(month), parseInt(day));
         }
-        
+
         // Case 6: Try native date parsing as fallback
         const fallbackDate = new Date(normalizedDateStr);
         if (!isNaN(fallbackDate.getTime())) {
           return fallbackDate;
         }
-        
+
         // If all parsing attempts fail, return current date minus a large number
         // based on source to maintain some consistency in the sort order
-        console.warn(`Could not parse date: "${dateStr}" from source: ${source}`);
+        console.warn(
+          `Could not parse date: "${dateStr}" from source: ${source}`,
+        );
         return new Date();
       };
-      
+
       // Helper to convert month name to month index (0-11)
-      const getMonthIndex = (monthName) => {
+      const getMonthIndex = monthName => {
         const months = {
-          'january': 0, 'jan': 0,
-          'february': 1, 'feb': 1,
-          'march': 2, 'mar': 2,
-          'april': 3, 'apr': 3,
-          'may': 4,
-          'june': 5, 'jun': 5,
-          'july': 6, 'jul': 6,
-          'august': 7, 'aug': 7,
-          'september': 8, 'sep': 8, 'sept': 8,
-          'october': 9, 'oct': 9,
-          'november': 10, 'nov': 10,
-          'december': 11, 'dec': 11
+          january: 0,
+          jan: 0,
+          february: 1,
+          feb: 1,
+          march: 2,
+          mar: 2,
+          april: 3,
+          apr: 3,
+          may: 4,
+          june: 5,
+          jun: 5,
+          july: 6,
+          jul: 6,
+          august: 7,
+          aug: 7,
+          september: 8,
+          sep: 8,
+          sept: 8,
+          october: 9,
+          oct: 9,
+          november: 10,
+          nov: 10,
+          december: 11,
+          dec: 11,
         };
-        
+
         return months[monthName.toLowerCase()] || 0;
       };
-  
+
       // Sort news items by parsed date (newest first)
       const sortedNews = allNews.sort((a, b) => {
         const dateA = parseDateString(a.time, a.source);
         const dateB = parseDateString(b.time, b.source);
-        
+
         // Debug information for troubleshooting
         if (process.env.NODE_ENV === 'development') {
-          console.log(`Comparing: ${a.source} - ${a.time} (${dateA}) vs ${b.source} - ${b.time} (${dateB})`);
+          console.log(
+            `Comparing: ${a.source} - ${a.time} (${dateA}) vs ${b.source} - ${b.time} (${dateB})`,
+          );
         }
-        
+
         return dateB.getTime() - dateA.getTime();
       });
-  
+
       console.log(`Fetched ${sortedNews.length} news items with summaries`);
       if (sortedNews.length > 0 && process.env.NODE_ENV === 'development') {
         console.log('First few items after sorting:');
         sortedNews.slice(0, 3).forEach((item, i) => {
-          console.log(`${i+1}. ${item.source}: ${item.time} - ${item.title.substring(0, 50)}...`);
+          console.log(
+            `${i + 1}. ${item.source}: ${item.time} - ${item.title.substring(
+              0,
+              50,
+            )}...`,
+          );
         });
       }
-  
+
       setNewsList(sortedNews);
-  
       // Trigger the notification scheduler with the latest news
       if (sortedNews.length > 0) {
         await scheduleNotification(sortedNews[0]); // Send the first news item as a notification
@@ -507,7 +544,14 @@ const National = () => {
       setRefreshing(false);
     }
   };
-
+  const updateNotification = async () => {
+    if (newsList.length > 0) {
+      await scheduleNotification(newsList[0]); // Reschedule with latest news
+    }
+  };
+  useEffect(() => {
+    updateNotification();
+  }, [newsList]);
   const onRefresh = () => {
     setRefreshing(true);
     fetchAllNews();
@@ -519,33 +563,31 @@ const National = () => {
 
   return (
     <View style={{flex: 1, backgroundColor: 'transparent'}}>
-    <StatusBar backgroundColor="#1E1E1E" barStyle="light-content" />
-    <LinearGradient
-      colors={['#E9E8E8FF', '#292929']}
-      start={{x: 0, y: 0}}
-      end={{x: 1, y: 1}}
-      style={styles.background}
-    >
-    <FlatList
-        data={newsList}
-        keyExtractor={(item, index) => index.toString()}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#0000ff']}
-          />
-        }
-        renderItem={({item}) => (
-          <NewsCard
-            news={item}
-            navigation={navigation}
-            onBookmark={handleBookmark}
-          />
-        )}
-      />
+      <StatusBar backgroundColor="#1E1E1E" barStyle="light-content" />
+      <LinearGradient
+        colors={['#E9E8E8FF', '#292929']}
+        start={{x: 0, y: 0}}
+        end={{x: 1, y: 1}}
+        style={styles.background}>
+        <FlatList
+          data={newsList}
+          keyExtractor={(item, index) => index.toString()}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#0000ff']}
+            />
+          }
+          renderItem={({item}) => (
+            <NewsCard
+              news={item}
+              navigation={navigation}
+              onBookmark={handleBookmark}
+            />
+          )}
+        />
       </LinearGradient>
-
     </View>
   );
 };
@@ -558,6 +600,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingVertical: 8,
-  }
+  },
 });
 export default National;
