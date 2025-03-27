@@ -109,44 +109,50 @@ const NewsCard = ({
     if (e) e.stopPropagation(); // Prevent event bubbling
     setIsExpanded(!isExpanded);
   };
-
   const handlePressIn = () => {
-    pressAnimation.value = withTiming(1, {duration: 200});
+    // Only allow long press if not expanded
+    if (!isExpanded) {
+      pressAnimation.value = withTiming(1, {duration: 200});
 
-    // Start long press detection
-    longPressTimeout.current = setTimeout(() => {
-      setIsLongPressing(true);
-      Vibration.vibrate(50); // Short vibration for feedback
+      // Start long press detection
+      longPressTimeout.current = setTimeout(() => {
+        setIsLongPressing(true);
+        Vibration.vibrate(50); // Short vibration for feedback
 
-      // Animate scale up for share visual feedback
-      RNAnimated.sequence([
-        RNAnimated.timing(shareScaleAnim, {
-          toValue: 1.1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        RNAnimated.timing(shareScaleAnim, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]).start();
+        // Animate scale up for share visual feedback
+        RNAnimated.sequence([
+          RNAnimated.timing(shareScaleAnim, {
+            toValue: 1.1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          RNAnimated.timing(shareScaleAnim, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+        ]).start();
 
-      // Share on long press
-      handleShare();
-    }, 800); // Trigger after 800ms hold
+        // Share on long press
+        handleShare();
+      }, 800); // Trigger after 800ms hold
+    }
   };
 
+
   const handlePressOut = () => {
-    pressAnimation.value = withTiming(0, {duration: 200});
+    // Only reset animation if not expanded
+    if (!isExpanded) {
+      pressAnimation.value = withTiming(0, {duration: 200});
 
-    // Clear long press timeout
-    if (longPressTimeout.current) {
-      clearTimeout(longPressTimeout.current);
-      longPressTimeout.current = null;
+      // Clear long press timeout
+      if (longPressTimeout.current) {
+        clearTimeout(longPressTimeout.current);
+        longPressTimeout.current = null;
+      }
+
+      setIsLongPressing(false);
     }
-
-    setIsLongPressing(false);
   };
 
   // Modified handleShare function to directly use the news.imageUrl instead of capturing

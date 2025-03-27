@@ -9,6 +9,11 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import {
+  InterstitialAd,
+  AdEventType,
+  TestIds,
+} from 'react-native-google-mobile-ads';
 
 const { width } = Dimensions.get('window');
 
@@ -42,7 +47,45 @@ const CategoryBar = () => {
     const currentRouteName = route.name;
     return CATEGORIES.includes(currentRouteName) ? currentRouteName : 'National';
   });
+
+  const [interstitialLoaded, setInterstitialLoaded] = useState(false);
   
+  // Create interstitial ad ref
+  const interstitialRef = useRef(
+    InterstitialAd.createForAdRequest(__DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-xxxxxxxxxxxxx/zzzzzzzzzzzzzz', {
+      requestNonPersonalizedAdsOnly: true,
+      keywords: ['current affairs', 'news', 'education'],
+    })
+  ).current;
+
+  // Load interstitial ad when component mounts
+  useEffect(() => {
+    const unsubscribeLoaded = interstitialRef.addAdEventListener(
+      AdEventType.LOADED,
+      () => {
+        setInterstitialLoaded(true);
+      }
+    );
+
+    const unsubscribeClosed = interstitialRef.addAdEventListener(
+      AdEventType.CLOSED,
+      () => {
+        // Reload the interstitial after it's closed
+        setInterstitialLoaded(false);
+        interstitialRef.load();
+      }
+    );
+
+    // Start loading the interstitial
+    interstitialRef.load();
+
+    // Clean up event listeners
+    return () => {
+      unsubscribeLoaded();
+      unsubscribeClosed();
+    };
+  }, []);
+
   // Sync selected category with current route
   useEffect(() => {
     const currentRouteName = route.name;
@@ -63,17 +106,28 @@ const CategoryBar = () => {
     }
   };
 
-  // Handle navigation and category selection
+  // Handle navigation and category selection with interstitial ad
   const handleCategoryPress = useCallback(
     (category) => {
-      if (CATEGORIES.includes(category)) {
-        setSelectedCategory(category);
-        navigation.navigate(category);
+      if (!CATEGORIES.includes(category)) return;
+  
+      setSelectedCategory(category);
+  
+      if (interstitialLoaded) {
+        interstitialRef.show();
+        const unsubscribeClosed = interstitialRef.addAdEventListener(
+          AdEventType.CLOSED,
+          () => {
+            navigation.replace(category);  // Changed from reset to replace
+            unsubscribeClosed();
+          }
+        );
+      } else {
+        navigation.replace(category);  // Changed from reset to replace
       }
     },
-    [navigation],
+    [navigation, interstitialLoaded],
   );
-
   // Measure and store category position when mounted
   const measurePosition = (category, event) => {
     const { x } = event.nativeEvent.layout;

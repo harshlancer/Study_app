@@ -15,6 +15,17 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import fetchMCQs from './fetchwcq';
 import LoadingMCQ from './LoadingMCQ';
+import {
+  NativeAd,
+  NativeAdView,
+  NativeAsset,
+  NativeMediaView,
+  NativeMediaAspectRatio,
+  NativeAssetType,
+  NativeAdChoicesPlacement,
+  TestIds
+} from 'react-native-google-mobile-ads';
+import NativeAdCard from './NativeAdCard';
 
 const {width} = Dimensions.get('window');
 
@@ -24,6 +35,7 @@ const WCQscreen = () => {
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [showExplanations, setShowExplanations] = useState({});
   const [score, setScore] = useState({correct: 0, total: 0});
+  const [nativeAd, setNativeAd] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -33,7 +45,149 @@ const WCQscreen = () => {
       setLoading(false);
     };
     loadData();
+
+    // Load native ad
+    const loadAd = async () => {
+      try {
+        const ad = await NativeAd.createForAdRequest(TestIds.NATIVE, {
+          aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
+          adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
+          startVideoMuted: true,
+        });
+        setNativeAd(ad);
+      } catch (error) {
+        console.error('Error loading native ad:', error);
+      }
+    };
+
+    loadAd();
+
+    return () => {
+      if (nativeAd && typeof nativeAd.destroy === 'function') {
+        nativeAd.destroy();
+      }
+    };
   }, []);
+
+  const renderQuestionItem = ({item: mcq, index: questionIndex}) => {
+    const correctOptionIndex = getCorrectOptionIndex(mcq);
+    const userSelected = selectedAnswers[questionIndex];
+    const showExplanation = showExplanations[questionIndex];
+    
+    return (
+      <View key={questionIndex} style={styles.questionContainer}>
+        <LinearGradient
+          colors={['#7B1FA2', '#6A1B9A']}
+          style={styles.questionHeader}>
+          <Text style={styles.questionNumber}>
+            Question {questionIndex + 1}
+          </Text>
+          {userSelected !== undefined && (
+            <View style={[
+              styles.resultBadge,
+              userSelected === correctOptionIndex 
+                ? styles.correctBadge 
+                : styles.incorrectBadge
+            ]}>
+              <Icon 
+                name={userSelected === correctOptionIndex ? 'checkmark' : 'close'} 
+                size={12} 
+                color="white" 
+              />
+            </View>
+          )}
+        </LinearGradient>
+        
+        <View style={styles.questionContent}>
+          <Text style={styles.questionText}>{mcq.question}</Text>
+
+          <View style={styles.optionsContainer}>
+            {mcq.options.map((option, optionIndex) => {
+              const isSelected = selectedAnswers[questionIndex] === optionIndex;
+              const isCorrect = optionIndex === correctOptionIndex;
+              const showResult = showExplanation || (isSelected && isCorrect);
+              
+              return (
+                <TouchableOpacity
+                  key={optionIndex}
+                  style={[
+                    styles.optionButton,
+                    isSelected && styles.selectedOption,
+                    showResult && isCorrect && styles.correctOption,
+                    showResult && isSelected && !isCorrect && styles.incorrectOption,
+                  ]}
+                  onPress={() => handleSelectOption(questionIndex, optionIndex)}>
+                  <View style={[
+                    styles.optionLabelContainer,
+                    isSelected && styles.selectedOptionLabel,
+                    showResult && isCorrect && styles.correctOptionLabel,
+                    showResult && isSelected && !isCorrect && styles.incorrectOptionLabel,
+                  ]}>
+                    <Text style={styles.optionLabel}>
+                      {getOptionLabel(optionIndex)}
+                    </Text>
+                  </View>
+                  <Text style={[
+                    styles.optionText,
+                    isSelected && styles.selectedOptionText,
+                  ]}>
+                    {option}
+                  </Text>
+                  {showResult && isCorrect && (
+                    <View style={styles.checkmarkContainer}>
+                      <Icon name="checkmark-circle" size={20} color="#4CAF50" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={styles.actionContainer}>
+            <TouchableOpacity
+              style={[
+                styles.showAnswerButton,
+                showExplanation && styles.hideAnswerButton
+              ]}
+              onPress={() => toggleExplanation(questionIndex)}>
+              <Text style={styles.showAnswerButtonText}>
+                {showExplanation ? 'Hide Explanation' : 'Show Explanation'}
+              </Text>
+              <Icon 
+                name={showExplanation ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color="white"
+                style={{marginLeft: 5}}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {showExplanation && (
+            <View style={styles.explanationContainer}>
+              <Text style={styles.correctAnswerText}>
+                Correct Answer: {mcq.correctAnswer}
+              </Text>
+              <Text style={styles.explanationText}>{mcq.explanation}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const renderItem = ({item, index}) => {
+    // Show ad after every 3 questions, but not before the first question
+    if (index > 0 && index % 3 === 0 && nativeAd) {
+      return (
+        <>
+          {renderQuestionItem({item, index})}
+          <NativeAdCard nativeAd={nativeAd} />
+        </>
+      );
+    }
+    
+    return renderQuestionItem({item, index});
+  };
 
   const handleSelectOption = (questionIndex, optionIndex) => {
     // If already answered, don't allow changes
@@ -114,7 +268,9 @@ const WCQscreen = () => {
           style={styles.gradientOverlay}>
           <ScrollView style={styles.container}>
             <View style={styles.header}>
-              <Text style={styles.title}>India Government & Politics Quiz</Text>
+              <Text style={styles.title}>
+                World affairs and GeoPolitics Quiz
+              </Text>
               <View style={styles.scoreContainer}>
                 <Text style={styles.scoreText}>
                   Score: {score.correct}/{score.total}
@@ -131,111 +287,11 @@ const WCQscreen = () => {
               <Text style={styles.subtitle}>{mcqs.length} Questions</Text>
             </View>
 
-            {mcqs.map((mcq, questionIndex) => {
-              const correctOptionIndex = getCorrectOptionIndex(mcq);
-              const userSelected = selectedAnswers[questionIndex];
-              const showExplanation = showExplanations[questionIndex];
-              
-              return (
-                <View key={questionIndex} style={styles.questionContainer}>
-                  <LinearGradient
-                    colors={['#7B1FA2', '#6A1B9A']}
-                    style={styles.questionHeader}>
-                    <Text style={styles.questionNumber}>
-                      Question {questionIndex + 1}
-                    </Text>
-                    {userSelected !== undefined && (
-                      <View style={[
-                        styles.resultBadge,
-                        userSelected === correctOptionIndex 
-                          ? styles.correctBadge 
-                          : styles.incorrectBadge
-                      ]}>
-                        <Icon 
-                          name={userSelected === correctOptionIndex ? 'checkmark' : 'close'} 
-                          size={12} 
-                          color="white" 
-                        />
-                      </View>
-                    )}
-                  </LinearGradient>
-                  
-                  <View style={styles.questionContent}>
-                    <Text style={styles.questionText}>{mcq.question}</Text>
-
-                    <View style={styles.optionsContainer}>
-                      {mcq.options.map((option, optionIndex) => {
-                        const isSelected = selectedAnswers[questionIndex] === optionIndex;
-                        const isCorrect = optionIndex === correctOptionIndex;
-                        const showResult = showExplanation || (isSelected && isCorrect);
-                        
-                        return (
-                          <TouchableOpacity
-                            key={optionIndex}
-                            style={[
-                              styles.optionButton,
-                              isSelected && styles.selectedOption,
-                              showResult && isCorrect && styles.correctOption,
-                              showResult && isSelected && !isCorrect && styles.incorrectOption,
-                            ]}
-                            onPress={() => handleSelectOption(questionIndex, optionIndex)}>
-                            <View style={[
-                              styles.optionLabelContainer,
-                              isSelected && styles.selectedOptionLabel,
-                              showResult && isCorrect && styles.correctOptionLabel,
-                              showResult && isSelected && !isCorrect && styles.incorrectOptionLabel,
-                            ]}>
-                              <Text style={styles.optionLabel}>
-                                {getOptionLabel(optionIndex)}
-                              </Text>
-                            </View>
-                            <Text style={[
-                              styles.optionText,
-                              isSelected && styles.selectedOptionText,
-                            ]}>
-                              {option}
-                            </Text>
-                            {showResult && isCorrect && (
-                              <View style={styles.checkmarkContainer}>
-                                <Icon name="checkmark-circle" size={20} color="#4CAF50" />
-                              </View>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-
-                    <View style={styles.actionContainer}>
-                      <TouchableOpacity
-                        style={[
-                          styles.showAnswerButton,
-                          showExplanation && styles.hideAnswerButton
-                        ]}
-                        onPress={() => toggleExplanation(questionIndex)}>
-                        <Text style={styles.showAnswerButtonText}>
-                          {showExplanation ? 'Hide Explanation' : 'Show Explanation'}
-                        </Text>
-                        <Icon 
-                          name={showExplanation ? 'chevron-up' : 'chevron-down'}
-                          size={16}
-                          color="white"
-                          style={{marginLeft: 5}}
-                        />
-                      </TouchableOpacity>
-                    </View>
-
-                    {showExplanation && (
-                      <View style={styles.explanationContainer}>
-                        <Text style={styles.correctAnswerText}>
-                          Correct Answer: {mcq.correctAnswer}
-                        </Text>
-                        <Text style={styles.explanationText}>{mcq.explanation}</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
+            {mcqs.map((mcq, index) => (
+              <View key={index}>
+                {renderItem({item: mcq, index})}
+              </View>
+            ))}
 
             {/* Add some bottom padding for better UX */}
             <View style={{height: 40}} />
