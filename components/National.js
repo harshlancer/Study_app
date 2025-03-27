@@ -14,27 +14,82 @@ import NewsCard from './NewsCard';
 import {useNavigation} from '@react-navigation/native';
 import {saveBookmark, removeBookmark} from './bookmarkUtils';
 import LoadingScreen from './LoadingScreen';
-import {scheduleNotification} from './NotificationScheduler'; // Import the scheduler
+import {scheduleNotification} from './NotificationScheduler';
+import {
+  NativeAd,
+  NativeAdView,
+  NativeAsset,
+  NativeMediaView,
+  NativeMediaAspectRatio,
+  NativeAssetType,
+  NativeAdChoicesPlacement,
+  TestIds,
+} from 'react-native-google-mobile-ads';
+import NativeAdCard from './NativeAdCard';
 
 const National = () => {
   const [newsList, setNewsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bookmarkedItems, setBookmarkedItems] = useState({});
+  const [nativeAd, setNativeAd] = useState(null);
   const navigation = useNavigation();
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerHeight = 120;
-
   useEffect(() => {
     fetchAllNews();
-  }, []);
 
+    // Load native ad
+    const loadAd = async () => {
+      try {
+        const ad = await NativeAd.createForAdRequest(TestIds.NATIVE, {
+          aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
+          adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
+          startVideoMuted: true,
+        });
+        setNativeAd(ad);
+      } catch (error) {
+        console.error('Error loading native ad:', error);
+      }
+    };
+
+    loadAd();
+
+    return () => {
+      if (nativeAd) {
+        nativeAd.destroy();
+      }
+    };
+  }, []);
   const handleBookmark = async (newsItem, isBookmarked) => {
     if (isBookmarked) {
       await saveBookmark(newsItem);
     } else {
       await removeBookmark(newsItem);
     }
+  };
+  const renderItem = ({ item, index }) => {
+    // Show ad after every 5 items, but never as the first item
+    if (index > 0 && index % 5 === 0 && nativeAd) {
+      return (
+        <>
+          <NewsCard
+            news={item}
+            navigation={navigation}
+            onBookmark={handleBookmark}
+          />
+          <NativeAdCard nativeAd={nativeAd} />
+        </>
+      );
+    }
+    
+    return (
+      <NewsCard
+        news={item}
+        navigation={navigation}
+        onBookmark={handleBookmark}
+      />
+    );
   };
   const extractImageUrl = article => {
     try {
@@ -579,18 +634,14 @@ const National = () => {
               colors={['#0000ff']}
             />
           }
-          renderItem={({item}) => (
-            <NewsCard
-              news={item}
-              navigation={navigation}
-              onBookmark={handleBookmark}
-            />
-          )}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
         />
       </LinearGradient>
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
