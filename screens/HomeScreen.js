@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, {useRef, useEffect, useState} from 'react';
 import {
   View,
   FlatList,
@@ -10,20 +10,32 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
+import {
+  BannerAd,
+  BannerAdSize,
+  TestIds,
+  useForeground,
+  InterstitialAd,
+  AdEventType,
+} from 'react-native-google-mobile-ads';
 
-const { width } = Dimensions.get('window');
+const {width} = Dimensions.get('window');
 const ITEM_WIDTH = width * 0.42;
 
+// AdMob configuration
+const bannerAdUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy';
+const interstitialAdUnitId = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-xxxxxxxxxxxxx/zzzzzzzzzzzzzz';
+
 const categories = [
-  { name: 'National', icon: 'flag', color: '#5D5DFB' },
-  { name: 'World', icon: 'earth', color: '#4CAF50' },
-  { name: 'National MCQs', icon: 'lightbulb-on', color: '#9C27B0' },
-  { name: 'World MCQs', icon: 'head-check-outline', color: '#FF5722' },
-  { name: 'WeeklyCurrentAffairs', icon: 'laptop', color: '#2196F3' },
-  { name: 'Bookmarks', icon: 'bookmark', color: '#E91E63' },
+  {name: 'National', icon: 'flag', color: '#5D5DFB'},
+  {name: 'World', icon: 'earth', color: '#4CAF50'},
+  {name: 'National MCQs', icon: 'lightbulb-on', color: '#9C27B0'},
+  {name: 'World MCQs', icon: 'head-check-outline', color: '#FF5722'},
+  {name: 'WeeklyCurrentAffairs', icon: 'laptop', color: '#2196F3'},
+  {name: 'Bookmarks', icon: 'bookmark', color: '#E91E63'},
 ];
 
 const HomeScreen = () => {
@@ -31,9 +43,47 @@ const HomeScreen = () => {
   const animatedValues = useRef(
     categories.map(() => new Animated.Value(0)),
   ).current;
+  const bannerRef = useRef(null);
+  const [interstitialLoaded, setInterstitialLoaded] = useState(false);
+  
+  // Create interstitial ad ref
+  const interstitialRef = useRef(
+    InterstitialAd.createForAdRequest(interstitialAdUnitId, {
+      requestNonPersonalizedAdsOnly: true,
+      keywords: ['current affairs', 'news', 'education'],
+    })
+  ).current;
 
   const headerAnim = useRef(new Animated.Value(0)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
+
+  // Load interstitial ad when component mounts
+  useEffect(() => {
+    const unsubscribeLoaded = interstitialRef.addAdEventListener(
+      AdEventType.LOADED,
+      () => {
+        setInterstitialLoaded(true);
+      }
+    );
+
+    const unsubscribeClosed = interstitialRef.addAdEventListener(
+      AdEventType.CLOSED,
+      () => {
+        // Reload the interstitial after it's closed
+        setInterstitialLoaded(false);
+        interstitialRef.load();
+      }
+    );
+
+    // Start loading the interstitial
+    interstitialRef.load();
+
+    // Clean up event listeners
+    return () => {
+      unsubscribeLoaded();
+      unsubscribeClosed();
+    };
+  }, []);
 
   // Animation for initial load
   useEffect(() => {
@@ -51,7 +101,7 @@ const HomeScreen = () => {
     ]).start();
   }, []);
 
-  const handlePressIn = (index) => {
+  const handlePressIn = index => {
     Animated.spring(animatedValues[index], {
       toValue: 1,
       friction: 3,
@@ -59,12 +109,32 @@ const HomeScreen = () => {
     }).start();
   };
 
-  const handlePressOut = (index) => {
+  const handlePressOut = index => {
     Animated.spring(animatedValues[index], {
       toValue: 0,
       friction: 3,
       useNativeDriver: true,
     }).start();
+  };
+
+  const handleCategoryPress = (screenName) => {
+    if (interstitialLoaded) {
+      // Show the interstitial ad before navigating
+      interstitialRef.show();
+      
+      // Add a listener for when the ad is closed
+      const unsubscribeClosed = interstitialRef.addAdEventListener(
+        AdEventType.CLOSED,
+        () => {
+          // Navigate after the ad is closed
+          navigation.navigate(screenName);
+          unsubscribeClosed(); // Remove this listener
+        }
+      );
+    } else {
+      // If no ad is loaded, just navigate
+      navigation.navigate(screenName);
+    }
   };
 
   const headerTranslateY = headerAnim.interpolate({
@@ -90,17 +160,16 @@ const HomeScreen = () => {
         <Animated.View
           style={[
             styles.header,
-            { transform: [{ translateY: headerTranslateY }] },
-          ]}
-        >
+            {transform: [{translateY: headerTranslateY}]},
+          ]}>
           <LinearGradient
             colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
-            style={styles.headerGradient}
-          >
-            <Animated.Text style={[styles.headerTitle, { opacity: titleOpacity }]}>
+            style={styles.headerGradient}>
+            <Animated.Text
+              style={[styles.headerTitle, {opacity: titleOpacity}]}>
               Editorial
             </Animated.Text>
-            <Animated.Text style={[styles.subtitle, { opacity: titleOpacity }]}>
+            <Animated.Text style={[styles.subtitle, {opacity: titleOpacity}]}>
               Select an area to explore
             </Animated.Text>
           </LinearGradient>
@@ -110,10 +179,10 @@ const HomeScreen = () => {
         <FlatList
           data={categories}
           numColumns={2}
-          keyExtractor={(item) => item.name}
+          keyExtractor={item => item.name}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.categoryContainer}
-          renderItem={({ item, index }) => {
+          renderItem={({item, index}) => {
             const scale = animatedValues[index].interpolate({
               inputRange: [0, 1],
               outputRange: [1, 1.05],
@@ -128,23 +197,20 @@ const HomeScreen = () => {
               <TouchableOpacity
                 onPressIn={() => handlePressIn(index)}
                 onPressOut={() => handlePressOut(index)}
-                onPress={() => navigation.navigate(item.name)}
-                activeOpacity={0.8}
-              >
+                onPress={() => handleCategoryPress(item.name)}
+                activeOpacity={0.8}>
                 <Animated.View
                   style={[
                     styles.categoryButton,
                     {
-                      transform: [{ scale }, { rotate }],
+                      transform: [{scale}, {rotate}],
                     },
-                  ]}
-                >
+                  ]}>
                   <LinearGradient
                     colors={[`${item.color}99`, item.color]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.cardGradient}
-                  >
+                    start={{x: 0, y: 0}}
+                    end={{x: 1, y: 1}}
+                    style={styles.cardGradient}>
                     <View style={styles.iconContainer}>
                       <Icon name={item.icon} size={32} color="#fff" />
                     </View>
@@ -155,11 +221,25 @@ const HomeScreen = () => {
             );
           }}
         />
+        <View style={styles.bannerContainer}>
+          <BannerAd
+            ref={bannerRef}
+            unitId={bannerAdUnitId}
+            size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+            requestOptions={{
+              networkExtras: {
+                collapsible: 'bottom',
+              },
+            }}
+            onAdFailedToLoad={error =>
+              console.error('Ad failed to load: ', error)
+            }
+          />
+        </View>
       </View>
     </SafeAreaView>
   );
 };
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -251,6 +331,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
     letterSpacing: 0.5,
+  },
+  bannerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
 });
 
