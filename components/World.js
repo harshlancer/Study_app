@@ -25,7 +25,7 @@ import {
   NativeMediaAspectRatio,
   NativeAssetType,
   NativeAdChoicesPlacement,
-  TestIds
+  TestIds,
 } from 'react-native-google-mobile-ads';
 import NativeAdCard from './NativeAdCard';
 
@@ -38,15 +38,18 @@ const World = () => {
 
   useEffect(() => {
     fetchAllNews();
-    
+
     // Load native ad
     const loadAd = async () => {
       try {
-        const ad = await NativeAd.createForAdRequest(TestIds.NATIVE, {
-          aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
-          adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
-          startVideoMuted: true,
-        });
+        const ad = await NativeAd.createForAdRequest(
+          'ca-app-pub-3382805190620235/1514257602',
+          {
+            aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
+            adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
+            startVideoMuted: true,
+          },
+        );
         setNativeAd(ad);
       } catch (error) {
         console.error('Error loading native ad:', error);
@@ -70,7 +73,7 @@ const World = () => {
     }
   };
 
-  const renderItem = ({ item, index }) => {
+  const renderItem = ({item, index}) => {
     // Show ad after every 5 items, but never as the first item
     if (index > 0 && index % 5 === 0 && nativeAd) {
       return (
@@ -84,7 +87,7 @@ const World = () => {
         </>
       );
     }
-    
+
     return (
       <NewsCard
         news={item}
@@ -310,56 +313,56 @@ const World = () => {
     }
   };
 
-  const normalizeDate = (dateStr) => {
+  const normalizeDate = dateStr => {
     if (!dateStr) return '';
-  
+
     let normalizedDate = dateStr
       .replace(/^(published|posted|updated):\s*/i, '')
       .trim();
-  
+
     const ddMonthYearPattern = /^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})$/;
     if (ddMonthYearPattern.test(normalizedDate)) {
       const [_, day, month, year] = normalizedDate.match(ddMonthYearPattern);
       normalizedDate = `${month} ${day}, ${year}`;
     }
-  
+
     const monthDayYearTimePattern =
       /^([a-zA-Z]+)\s+(\d{1,2}),\s+(\d{4})\s+(\d{1,2}):(\d{2})\s+(am|pm)$/i;
     if (monthDayYearTimePattern.test(normalizedDate)) {
       return normalizedDate;
     }
-  
+
     return normalizedDate;
   };
 
-  const parseDate = (dateStr) => {
+  const parseDate = dateStr => {
     if (!dateStr) return new Date(0);
-    
+
     if (dateStr.includes('hours ago') || dateStr.includes('hour ago')) {
       const hours = parseInt(dateStr);
       const date = new Date();
       date.setHours(date.getHours() - hours);
       return date;
     }
-    
+
     if (dateStr.includes('days ago') || dateStr.includes('day ago')) {
       const days = parseInt(dateStr);
       const date = new Date();
       date.setDate(date.getDate() - days);
       return date;
     }
-    
+
     if (dateStr.includes('month ago') || dateStr.includes('months ago')) {
       const months = parseInt(dateStr) || 1;
       const date = new Date();
       date.setMonth(date.getMonth() - months);
       return date;
     }
-    
+
     return new Date(dateStr);
   };
 
-  const sortNewsByDate = (newsItems) => {
+  const sortNewsByDate = newsItems => {
     return [...newsItems].sort((a, b) => {
       const dateA = parseDate(a.time);
       const dateB = parseDate(b.time);
@@ -377,14 +380,17 @@ const World = () => {
           const news = await fetchGKTodayNews(page);
           gkTodayNews = [...gkTodayNews, ...news];
         } catch (error) {
-          console.error(`Error fetching GKToday news from page ${page}:`, error);
+          console.error(
+            `Error fetching GKToday news from page ${page}:`,
+            error,
+          );
         }
       }
 
       const jagranNews = await fetchJagranNews();
 
       const allNews = [...gkTodayNews, ...jagranNews];
-      
+
       const sortedNews = sortNewsByDate(allNews);
 
       setNewsList(sortedNews);

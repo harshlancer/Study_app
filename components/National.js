@@ -42,7 +42,7 @@ const National = () => {
     // Load native ad
     const loadAd = async () => {
       try {
-        const ad = await NativeAd.createForAdRequest(TestIds.NATIVE, {
+        const ad = await NativeAd.createForAdRequest("ca-app-pub-3382805190620235/3239205147", {
           aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
           adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
           startVideoMuted: true,
@@ -70,7 +70,7 @@ const National = () => {
   };
   const renderItem = ({ item, index }) => {
     // Show ad after every 5 items, but never as the first item
-    if (index > 0 && index % 5 === 0 && nativeAd) {
+    if (index > 0 && index % 3 === 0 && nativeAd) {
       return (
         <>
           <NewsCard
