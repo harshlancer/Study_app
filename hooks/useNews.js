@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import fetchNews from '../services/NewsService';
+import fetchNews from '../services/newsService';
 
 const useNews = () => {
   const [news, setNews] = useState([]);

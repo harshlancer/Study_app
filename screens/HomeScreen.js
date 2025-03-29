@@ -26,12 +26,8 @@ const {width} = Dimensions.get('window');
 const ITEM_WIDTH = width * 0.42;
 
 // AdMob configuration
-const bannerAdUnitId = __DEV__
-  ? TestIds.BANNER
-  : 'ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy';
-const interstitialAdUnitId = __DEV__
-  ? TestIds.INTERSTITIAL
-  : 'ca-app-pub-xxxxxxxxxxxxx/zzzzzzzzzzzzzz';
+const bannerAdUnitId = 'ca-app-pub-3382805190620235/7614782049';
+const interstitialAdUnitId = 'ca-app-pub-3382805190620235/5559102956';
 
 const categories = [
   {name: 'National', icon: 'flag', color: '#5D5DFB'},
@@ -61,7 +57,7 @@ const HomeScreen = () => {
       keywords: ['current affairs', 'news', 'education'],
     }),
   ).current;
-
+  
   const headerAnim = useRef(new Animated.Value(0)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
 

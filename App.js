@@ -3,11 +3,23 @@ import { Provider } from 'react-redux';
 import store from './store/store.js';
 import AppNavigator from './navigation/AppNavigator.js';
 import notifee from '@notifee/react-native';
-import { scheduleNotification, setupNotificationListeners, listScheduledNotifications } from './components/NotificationScheduler.js';
-import { initializeMemeNotifications, sendImmediateMemeNotification } from './components/MemeScheduler.js';
+import { 
+  scheduleNotification, 
+  setupNotificationListeners, 
+  listScheduledNotifications,
+  registerBackgroundHandler 
+} from './components/NotificationScheduler.js';
+import { 
+  initializeMemeNotifications, 
+  sendImmediateMemeNotification 
+} from './components/MemeScheduler.js';
+import { Linking } from 'react-native';
 import HTMLParser from 'react-native-html-parser';
 
-// Function to fetch initial news data (adapted from National.js)
+// Navigation reference for handling notification presses
+let navigationRef;
+
+// Function to fetch initial news data
 const fetchInitialNews = async () => {
   try {
     const response = await fetch(
@@ -35,7 +47,7 @@ const fetchInitialNews = async () => {
       return null;
     }
 
-    const article = articles[0]; // Take the first article
+    const article = articles[0];
     const titleElement = article.getElementsByTagName('h3')[0]?.getElementsByTagName('a')[0];
     const title = titleElement?.textContent.trim() || 'No Title';
     const summary = article.getElementsByTagName('p')[0]?.textContent.trim() || 'No Summary';
@@ -48,6 +60,20 @@ const fetchInitialNews = async () => {
   }
 };
 
+// Handle deep linking
+const handleDeepLink = (url) => {
+  if (!url || !navigationRef) return;
+  
+  const route = url.replace(/.*?:\/\//g, '');
+  const [screen, params] = route.split('/');
+  
+  if (screen === 'currentaffairs') {
+    navigationRef.navigate('CurrentAffairs');
+  } else if (screen === 'news') {
+    navigationRef.navigate('NewsScreen', { newsItem: JSON.parse(params) });
+  }
+};
+
 const App = () => {
   useEffect(() => {
     const initializeNotifications = async () => {
@@ -55,11 +81,11 @@ const App = () => {
       const settings = await notifee.requestPermission();
       if (settings.authorizationStatus >= 1) {
         console.log('Notification permissions granted');
-  
+
         // Fetch initial news data
         const newsItem = await fetchInitialNews();
         let newsScheduled = false;
-  
+
         if (newsItem) {
           try {
             // Schedule the news notification every 3 hours
@@ -72,10 +98,10 @@ const App = () => {
         } else {
           console.warn('No news item fetched, skipping news notification');
         }
-  
+
         // Initialize daily meme notifications regardless of news status
         await initializeMemeNotifications();
-  
+
         // If news notifications failed, send an immediate meme as fallback
         if (!newsScheduled) {
           console.log('Sending immediate meme notification as fallback');
@@ -85,25 +111,68 @@ const App = () => {
             console.error('Even fallback meme notification failed:', memeError);
           }
         }
-  
+
         // Log scheduled notifications for debugging
         await listScheduledNotifications();
       } else {
         console.log('Notification permissions denied');
       }
-  
+
       // Set up listeners
-      const unsubscribe = setupNotificationListeners();
-  
-      return () => unsubscribe();
+      const unsubscribeForeground = setupNotificationListeners((notification) => {
+        handleNotificationPress(notification);
+      });
+      
+      // Register background handler
+      const unsubscribeBackground = registerBackgroundHandler((notification) => {
+        handleNotificationPress(notification);
+      });
+
+      // Set up deep linking listener
+      const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
+        handleDeepLink(url);
+      });
+
+      // Check for initial deep link
+      Linking.getInitialURL().then(url => {
+        if (url) handleDeepLink(url);
+      });
+
+      return () => {
+        unsubscribeForeground();
+        unsubscribeBackground();
+        linkingSubscription.remove();
+      };
     };
-  
+
     initializeNotifications();
   }, []);
 
+  // Handle notification press events
+  const handleNotificationPress = (notification) => {
+    if (!navigationRef) return;
+    
+    const notificationType = notification?.data?.type;
+    const pressActionId = notification?.pressAction?.id;
+
+    if (pressActionId === 'dismiss') return;
+
+    if (notificationType === 'news') {
+      navigationRef.navigate('NewsScreen', { 
+        newsItem: notification.data 
+      });
+    } else if (notificationType === 'meme') {
+      navigationRef.navigate('CurrentAffairs');
+    }
+  };
+
   return (
     <Provider store={store}>
-      <AppNavigator />
+      <AppNavigator 
+        ref={(ref) => {
+          navigationRef = ref;
+        }} 
+      />
     </Provider>
   );
 };

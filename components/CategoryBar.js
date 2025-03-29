@@ -52,7 +52,7 @@ const CategoryBar = () => {
   
   // Create interstitial ad ref
   const interstitialRef = useRef(
-    InterstitialAd.createForAdRequest(__DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-xxxxxxxxxxxxx/zzzzzzzzzzzzzz', {
+    InterstitialAd.createForAdRequest('ca-app-pub-3382805190620235/5559102956', {
       requestNonPersonalizedAdsOnly: true,
       keywords: ['current affairs', 'news', 'education'],
     })

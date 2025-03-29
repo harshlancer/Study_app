@@ -128,7 +128,7 @@ const scheduleDailyMemeNotification = async () => {
           color: '#4655F5FF', // Amber color for meme notifications
           pressAction: {
             id: 'default',
-            launchActivity: '.MainActivity',
+            launchActivity: 'com.chronosbrief.MainActivity',
           },
           style: {
             type: AndroidStyle.BIGTEXT,
