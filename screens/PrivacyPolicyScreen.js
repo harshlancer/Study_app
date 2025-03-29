@@ -19,35 +19,21 @@ const PrivacyPolicyScreen = ({ navigation }) => {
         
         <Text style={styles.sectionTitle}>1. Information We Collect</Text>
         <Text style={styles.text}>
-          We collect information to provide better services to all our users. 
-          The types of information we collect depend on how you use our services.
+          We don't collect any information to provide services to all our users. 
         </Text>
         
-        <Text style={styles.sectionTitle}>2. How We Use Information</Text>
+        <Text style={styles.sectionTitle}></Text>
         <Text style={styles.text}>
-          We use the information we collect to provide, maintain, and improve 
-          our services, to develop new ones, and to protect our users.
         </Text>
         
-        <Text style={styles.sectionTitle}>3. Information Sharing</Text>
+        <Text style={styles.sectionTitle}></Text>
         <Text style={styles.text}>
-          We do not share personal information with companies, organizations, 
-          or individuals outside of our company except in the following cases:
         </Text>
-        <Text style={styles.listItem}>• With your consent</Text>
-        <Text style={styles.listItem}>• For legal reasons</Text>
         
-        <Text style={styles.sectionTitle}>4. Security</Text>
-        <Text style={styles.text}>
-          We work hard to protect our users from unauthorized access to or 
-          alteration, disclosure, or destruction of information we hold.
-        </Text>
+        
         
         <Text style={styles.sectionTitle}>5. Changes to This Policy</Text>
-        <Text style={styles.text}>
-          We may change this privacy policy from time to time. We will post 
-          any privacy policy changes on this page.
-        </Text>
+        
       </ScrollView>
     </View>
   );

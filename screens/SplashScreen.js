@@ -6,11 +6,11 @@ import {
   Animated,
   Dimensions,
   StatusBar,
-  Image
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import picOne from "./image.png";
+import picOne from './image.png';
 const {width} = Dimensions.get('window');
 
 const SplashScreen = ({navigation}) => {
@@ -131,17 +131,17 @@ const SplashScreen = ({navigation}) => {
           end={{x: 1, y: 1}}
           style={styles.logoGradient}>
           <Animated.View style={{transform: [{rotate: spin}]}}>
-          <Image source={picOne} style={styles.image} />
+            <Image source={picOne} style={styles.image} />
           </Animated.View>
         </LinearGradient>
       </Animated.View>
 
       <View style={styles.textContainer}>
         <Animated.Text style={[styles.title, {opacity: textOpacity}]}>
-          Editor's Choice
+          Don't get stuck in the past.
         </Animated.Text>
         <Animated.Text style={[styles.subtitle, {opacity: textOpacity}]}>
-          Explore and Discover
+          Stay updated daily
         </Animated.Text>
       </View>
     </View>

@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef} from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -8,57 +8,61 @@ import {
   Animated,
   Text,
 } from 'react-native';
-import {LinearGradient} from 'react-native-linear-gradient';
+import { LinearGradient } from 'react-native-linear-gradient';
 import HTMLParser from 'react-native-html-parser';
 import NewsCard from './NewsCard';
-import {useNavigation} from '@react-navigation/native';
-import {saveBookmark, removeBookmark} from './bookmarkUtils';
+import { useNavigation } from '@react-navigation/native';
+import { saveBookmark, removeBookmark } from './bookmarkUtils';
 import LoadingScreen from './LoadingScreen';
-import {scheduleNotification} from './NotificationScheduler';
+import { scheduleNotification } from './NotificationScheduler';
 import {
   NativeAd,
-  NativeAdView,
-  NativeAsset,
   NativeMediaView,
   NativeMediaAspectRatio,
-  NativeAssetType,
   NativeAdChoicesPlacement,
-  TestIds,
 } from 'react-native-google-mobile-ads';
 import NativeAdCard from './NativeAdCard';
+
+const AD_UNIT_IDS = [
+  "ca-app-pub-3382805190620235/3239205147", // First ad unit
+  "ca-app-pub-3382805190620235/4943733703", // Second ad unit
+  "ca-app-pub-3382805190620235/3630652032", // Third ad unit
+];
 
 const National = () => {
   const [newsList, setNewsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bookmarkedItems, setBookmarkedItems] = useState({});
-  const [nativeAd, setNativeAd] = useState(null);
+  const [nativeAds, setNativeAds] = useState([]); // Array to hold multiple ads
   const navigation = useNavigation();
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const headerHeight = 120;
+  const scrollY = useRef(new Animated.Value(0)).current; // Array to hold multiple ads
   useEffect(() => {
     fetchAllNews();
 
-    // Load native ad
-    const loadAd = async () => {
-      try {
-        const ad = await NativeAd.createForAdRequest("ca-app-pub-3382805190620235/3239205147", {
-          aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
-          adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
-          startVideoMuted: true,
-        });
-        setNativeAd(ad);
-      } catch (error) {
-        console.error('Error loading native ad:', error);
+    // Load all native ads
+    const loadAds = async () => {
+      const loadedAds = [];
+      for (const adUnitId of AD_UNIT_IDS) {
+        try {
+          const ad = await NativeAd.createForAdRequest(adUnitId, {
+            aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
+            adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
+            startVideoMuted: true,
+          });
+          loadedAds.push(ad);
+        } catch (error) {
+          console.error(`Error loading native ad ${adUnitId}:`, error);
+        }
       }
+      setNativeAds(loadedAds);
     };
 
-    loadAd();
+    loadAds();
 
+    // Cleanup function to destroy all ads
     return () => {
-      if (nativeAd) {
-        nativeAd.destroy();
-      }
+      nativeAds.forEach(ad => ad?.destroy());
     };
   }, []);
   const handleBookmark = async (newsItem, isBookmarked) => {
@@ -69,8 +73,11 @@ const National = () => {
     }
   };
   const renderItem = ({ item, index }) => {
-    // Show ad after every 5 items, but never as the first item
-    if (index > 0 && index % 3 === 0 && nativeAd) {
+    // Show ad after every 3 items, but never as the first item
+    if (index > 0 && index % 3 === 0 && nativeAds.length > 0) {
+      // Rotate ads based on index
+      const adIndex = Math.floor(index / 3) % nativeAds.length;
+      const selectedAd = nativeAds[adIndex];
       return (
         <>
           <NewsCard
@@ -78,11 +85,11 @@ const National = () => {
             navigation={navigation}
             onBookmark={handleBookmark}
           />
-          <NativeAdCard nativeAd={nativeAd} />
+          {selectedAd && <NativeAdCard nativeAd={selectedAd} />}
         </>
       );
     }
-    
+
     return (
       <NewsCard
         news={item}

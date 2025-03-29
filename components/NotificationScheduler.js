@@ -50,7 +50,8 @@ const scheduleNotification = async (newsItem) => {
           },
           pressAction: {
             id: 'default',
-            launchActivity: '.MainActivity',
+            launchActivity: '.default',
+            mainComponent: 'App',
           },
           // Add timestamp to show time
           showTimestamp: true,

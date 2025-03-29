@@ -235,7 +235,7 @@ const HomeScreen = () => {
             </TouchableOpacity>
             <Animated.Text
               style={[styles.headerTitle, {opacity: titleOpacity}]}>
-              Editorial
+              Currently 
             </Animated.Text>
             <Animated.Text style={[styles.subtitle, {opacity: titleOpacity}]}>
               Select an area to explore

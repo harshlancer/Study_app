@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef} from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -12,56 +12,58 @@ import {
 } from 'react-native';
 import HTMLParser from 'react-native-html-parser';
 import NewsCard from './NewsCard';
-import {useNavigation} from '@react-navigation/native';
-import {saveBookmark, removeBookmark} from './bookmarkUtils';
+import { useNavigation } from '@react-navigation/native';
+import { saveBookmark, removeBookmark } from './bookmarkUtils';
 import LoadingScreen from './LoadingScreen';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {LinearGradient} from 'react-native-linear-gradient';
+import { LinearGradient } from 'react-native-linear-gradient';
 import {
   NativeAd,
-  NativeAdView,
-  NativeAsset,
   NativeMediaView,
   NativeMediaAspectRatio,
-  NativeAssetType,
   NativeAdChoicesPlacement,
-  TestIds,
 } from 'react-native-google-mobile-ads';
 import NativeAdCard from './NativeAdCard';
+
+const AD_UNIT_IDS = [
+  'ca-app-pub-3382805190620235/1514257602', // Original ad unit from World.js
+  'ca-app-pub-3382805190620235/3239205147', // From National.js
+  'ca-app-pub-3382805190620235/4943733703', // From National.js
+  'ca-app-pub-3382805190620235/3630652032', // From National.js
+];
 
 const World = () => {
   const [newsList, setNewsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [nativeAd, setNativeAd] = useState(null);
+  const [nativeAds, setNativeAds] = useState([]); // Array to hold multiple ads
   const navigation = useNavigation();
 
   useEffect(() => {
     fetchAllNews();
 
-    // Load native ad
-    const loadAd = async () => {
-      try {
-        const ad = await NativeAd.createForAdRequest(
-          'ca-app-pub-3382805190620235/1514257602',
-          {
+    // Load all native ads
+    const loadAds = async () => {
+      const loadedAds = [];
+      for (const adUnitId of AD_UNIT_IDS) {
+        try {
+          const ad = await NativeAd.createForAdRequest(adUnitId, {
             aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
             adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
             startVideoMuted: true,
-          },
-        );
-        setNativeAd(ad);
-      } catch (error) {
-        console.error('Error loading native ad:', error);
+          });
+          loadedAds.push(ad);
+        } catch (error) {
+          console.error(`Error loading native ad ${adUnitId}:`, error);
+        }
       }
+      setNativeAds(loadedAds);
     };
 
-    loadAd();
+    loadAds();
 
     return () => {
-      if (nativeAd && typeof nativeAd.destroy === 'function') {
-        nativeAd.destroy();
-      }
+      nativeAds.forEach(ad => ad?.destroy());
     };
   }, []);
 
@@ -73,9 +75,12 @@ const World = () => {
     }
   };
 
-  const renderItem = ({item, index}) => {
-    // Show ad after every 5 items, but never as the first item
-    if (index > 0 && index % 5 === 0 && nativeAd) {
+  const renderItem = ({ item, index }) => {
+    // Show ad after every 2 items, but never as the first item
+    if (index > 0 && index % 2 === 0 && nativeAds.length > 0) {
+      // Rotate ads based on index
+      const adIndex = Math.floor(index / 2) % nativeAds.length;
+      const selectedAd = nativeAds[adIndex];
       return (
         <>
           <NewsCard
@@ -83,7 +88,7 @@ const World = () => {
             navigation={navigation}
             onBookmark={handleBookmark}
           />
-          <NativeAdCard nativeAd={nativeAd} />
+          {selectedAd && <NativeAdCard nativeAd={selectedAd} />}
         </>
       );
     }
@@ -144,7 +149,7 @@ const World = () => {
       const match = htmlContent.match(imgRegex);
 
       if (match && match[1]) {
-        const url = match[1].replace(/&amp;/g, '&');
+        const url = match[1].replace(/&/g, '&');
         return url;
       }
 
@@ -261,7 +266,7 @@ const World = () => {
 
           let imageUrl = 'https://via.placeholder.com/600x300';
           if (imgMatch && imgMatch[1]) {
-            imageUrl = imgMatch[1].replace(/&amp;/g, '&');
+            imageUrl = imgMatch[1].replace(/&/g, '&');
           }
 
           let summary = '';
@@ -339,14 +344,14 @@ const World = () => {
     if (!dateStr) return new Date(0);
 
     if (dateStr.includes('hours ago') || dateStr.includes('hour ago')) {
-      const hours = parseInt(dateStr);
+      const hours = parseInt(dateStr) || 1;
       const date = new Date();
       date.setHours(date.getHours() - hours);
       return date;
     }
 
     if (dateStr.includes('days ago') || dateStr.includes('day ago')) {
-      const days = parseInt(dateStr);
+      const days = parseInt(dateStr) || 1;
       const date = new Date();
       date.setDate(date.getDate() - days);
       return date;
@@ -412,12 +417,12 @@ const World = () => {
   }
 
   return (
-    <View style={{flex: 1, backgroundColor: 'transparent'}}>
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <StatusBar backgroundColor="#1E1E1E" barStyle="light-content" />
       <LinearGradient
         colors={['#E9E8E8FF', '#292929']}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={styles.background}>
         <FlatList
           data={newsList}
