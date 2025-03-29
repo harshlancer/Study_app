@@ -13,6 +13,9 @@ import WCQscreen from '../components/WCQscreen';
 import SplashScreen from '../screens/SplashScreen';
 import WeeklyCurrentAffairs from '../components/WeeklyCurrentAffairs';
 import PDFViewerScreen from '../screens/PDFViewerScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import ContactScreen from '../screens/ContactScreen';
+import AboutUsScreen from '../screens/AboutUsScreen';
 
 const Stack = createStackNavigator();
 
@@ -24,8 +27,8 @@ const AppNavigator = () => {
         screenOptions={{
           headerStyle: {
             backgroundColor: '#FFFFFF',
-            elevation: 0, // Android
-            shadowOpacity: 0, // iOS
+            elevation: 0,
+            shadowOpacity: 0,
             borderBottomWidth: 0,
           },
           headerTitleStyle: {
@@ -55,7 +58,6 @@ const AppNavigator = () => {
             </MainLayout>
           )}
         </Stack.Screen>
-        {/* Rest of your screens remain the same */}
         <Stack.Screen
           name="National MCQs"
           options={{
@@ -92,7 +94,25 @@ const AppNavigator = () => {
             </MainLayout>
           )}
         </Stack.Screen>
-        <Stack.Screen name="WebViewScreen" component={WebViewScreen} />
+        <Stack.Screen 
+          name="WebViewScreen" 
+          component={WebViewScreen} 
+        />
+        <Stack.Screen
+          name="PrivacyPolicyScreen"
+          component={PrivacyPolicyScreen}
+          options={{title: 'Privacy Policy'}}
+        />
+        <Stack.Screen
+          name="AboutUsScreen"
+          component={AboutUsScreen}
+          options={{title: 'About Us'}}
+        />
+        <Stack.Screen
+          name="ContactUs"
+          component={ContactScreen}
+          options={{title: 'Contact Us'}}
+        />
         <Stack.Screen
           name="World"
           options={{
@@ -117,7 +137,10 @@ const AppNavigator = () => {
             </MainLayout>
           )}
         </Stack.Screen>
-        <Stack.Screen name="Bookmarks" component={Bookmarks} />
+        <Stack.Screen 
+          name="Bookmarks" 
+          component={Bookmarks} 
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

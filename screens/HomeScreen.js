@@ -9,6 +9,7 @@ import {
   StatusBar,
   Dimensions,
   SafeAreaView,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -17,7 +18,6 @@ import {
   BannerAd,
   BannerAdSize,
   TestIds,
-  useForeground,
   InterstitialAd,
   AdEventType,
 } from 'react-native-google-mobile-ads';
@@ -26,8 +26,12 @@ const {width} = Dimensions.get('window');
 const ITEM_WIDTH = width * 0.42;
 
 // AdMob configuration
-const bannerAdUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy';
-const interstitialAdUnitId = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-xxxxxxxxxxxxx/zzzzzzzzzzzzzz';
+const bannerAdUnitId = __DEV__
+  ? TestIds.BANNER
+  : 'ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy';
+const interstitialAdUnitId = __DEV__
+  ? TestIds.INTERSTITIAL
+  : 'ca-app-pub-xxxxxxxxxxxxx/zzzzzzzzzzzzzz';
 
 const categories = [
   {name: 'National', icon: 'flag', color: '#5D5DFB'},
@@ -40,22 +44,34 @@ const categories = [
 
 const HomeScreen = () => {
   const navigation = useNavigation();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const sidebarAnim = useRef(new Animated.Value(-250)).current;
   const animatedValues = useRef(
     categories.map(() => new Animated.Value(0)),
   ).current;
   const bannerRef = useRef(null);
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
-  
+
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
   // Create interstitial ad ref
   const interstitialRef = useRef(
     InterstitialAd.createForAdRequest(interstitialAdUnitId, {
       requestNonPersonalizedAdsOnly: true,
       keywords: ['current affairs', 'news', 'education'],
-    })
+    }),
   ).current;
 
   const headerAnim = useRef(new Animated.Value(0)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(sidebarAnim, {
+      toValue: isSidebarOpen ? 0 : -250,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [isSidebarOpen]);
 
   // Load interstitial ad when component mounts
   useEffect(() => {
@@ -63,22 +79,19 @@ const HomeScreen = () => {
       AdEventType.LOADED,
       () => {
         setInterstitialLoaded(true);
-      }
+      },
     );
 
     const unsubscribeClosed = interstitialRef.addAdEventListener(
       AdEventType.CLOSED,
       () => {
-        // Reload the interstitial after it's closed
         setInterstitialLoaded(false);
         interstitialRef.load();
-      }
+      },
     );
 
-    // Start loading the interstitial
     interstitialRef.load();
 
-    // Clean up event listeners
     return () => {
       unsubscribeLoaded();
       unsubscribeClosed();
@@ -117,22 +130,17 @@ const HomeScreen = () => {
     }).start();
   };
 
-  const handleCategoryPress = (screenName) => {
+  const handleCategoryPress = screenName => {
     if (interstitialLoaded) {
-      // Show the interstitial ad before navigating
       interstitialRef.show();
-      
-      // Add a listener for when the ad is closed
       const unsubscribeClosed = interstitialRef.addAdEventListener(
         AdEventType.CLOSED,
         () => {
-          // Navigate after the ad is closed
           navigation.navigate(screenName);
-          unsubscribeClosed(); // Remove this listener
-        }
+          unsubscribeClosed();
+        },
       );
     } else {
-      // If no ad is loaded, just navigate
       navigation.navigate(screenName);
     }
   };
@@ -146,13 +154,74 @@ const HomeScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#121212" barStyle="light-content" />
 
+      {/* Sidebar */}
+      <Animated.View
+        style={[
+          styles.sidebar,
+          {transform: [{translateX: sidebarAnim}]},
+        ]}>
+        <View style={styles.sidebarContent}>
+          <TouchableOpacity
+            style={styles.sidebarItem}
+            onPress={() => {
+              navigation.navigate('PrivacyPolicyScreen');
+              setIsSidebarOpen(false);
+            }}>
+            <Icon
+              name="shield-account"
+              size={24}
+              color="#FFF"
+              style={styles.sidebarIcon}
+            />
+            <Text style={styles.sidebarText}>Privacy Policy</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.sidebarItem}
+            onPress={() => {
+              navigation.navigate('AboutUsScreen');
+              setIsSidebarOpen(false);
+            }}>
+            <Icon
+              name="information-outline"
+              size={24}
+              color="#FFF"
+              style={styles.sidebarIcon}
+            />
+            <Text style={styles.sidebarText}>About Us</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.sidebarItem}
+            onPress={() => {
+              navigation.navigate('ContactUs');
+              setIsSidebarOpen(false);
+            }}>
+            <Icon
+              name="email-outline"
+              size={24}
+              color="#FFF"
+              style={styles.sidebarIcon}
+            />
+            <Text style={styles.sidebarText}>Contact Us</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+
+      {/* Backdrop */}
+      {isSidebarOpen && (
+        <TouchableWithoutFeedback onPress={toggleSidebar}>
+          <View style={styles.backdrop} />
+        </TouchableWithoutFeedback>
+      )}
+
       <View style={styles.container}>
         <LinearGradient
           colors={['#121212', '#1E1E1E']}
           style={styles.gradient}
         />
 
-        {/* Accent circles for futuristic feel */}
+        {/* Accent circles */}
         <View style={styles.accentCircle1} />
         <View style={styles.accentCircle2} />
 
@@ -165,6 +234,9 @@ const HomeScreen = () => {
           <LinearGradient
             colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
             style={styles.headerGradient}>
+            <TouchableOpacity onPress={toggleSidebar} style={styles.menuButton}>
+              <Icon name="menu" size={28} color="#FFF" />
+            </TouchableOpacity>
             <Animated.Text
               style={[styles.headerTitle, {opacity: titleOpacity}]}>
               Editorial
@@ -221,6 +293,8 @@ const HomeScreen = () => {
             );
           }}
         />
+
+        {/* Banner Ad */}
         <View style={styles.bannerContainer}>
           <BannerAd
             ref={bannerRef}
@@ -240,6 +314,7 @@ const HomeScreen = () => {
     </SafeAreaView>
   );
 };
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -247,6 +322,50 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  sidebar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 250,
+    backgroundColor: '#1E1E1E',
+    zIndex: 100,
+    elevation: 100,
+  },
+  sidebarContent: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+  },
+  sidebarItem: {
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sidebarIcon: {
+    marginRight: 15,
+  },
+  sidebarText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 99,
+  },
+  menuButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 1,
   },
   gradient: {
     position: 'absolute',
