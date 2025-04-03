@@ -41,19 +41,21 @@ const CategoryBar = () => {
   const route = useRoute();
   const scrollViewRef = useRef(null);
   const categoryPositions = useRef({}).current;
-  
-  // Always initialize with the current route name
+
+  // State for selected category and navigation counter
   const [selectedCategory, setSelectedCategory] = useState(() => {
     const currentRouteName = route.name;
     return CATEGORIES.includes(currentRouteName) ? currentRouteName : 'National';
   });
-
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
-  
-  // Create interstitial ad ref
+  const [navigationCount, setNavigationCount] = useState(0); // Track navigation attempts
+
+  // Create interstitial ad ref with Families compliance
   const interstitialRef = useRef(
     InterstitialAd.createForAdRequest('ca-app-pub-3382805190620235/5559102956', {
       requestNonPersonalizedAdsOnly: true,
+      tagForChildDirectedTreatment: true, // Ensure family-friendly ads
+      maxAdContentRating: 'G', // Restrict to General Audiences
       keywords: ['current affairs', 'news', 'education'],
     })
   ).current;
@@ -70,16 +72,13 @@ const CategoryBar = () => {
     const unsubscribeClosed = interstitialRef.addAdEventListener(
       AdEventType.CLOSED,
       () => {
-        // Reload the interstitial after it's closed
         setInterstitialLoaded(false);
-        interstitialRef.load();
+        interstitialRef.load(); // Reload after closing
       }
     );
 
-    // Start loading the interstitial
     interstitialRef.load();
 
-    // Clean up event listeners
     return () => {
       unsubscribeLoaded();
       unsubscribeClosed();
@@ -91,8 +90,6 @@ const CategoryBar = () => {
     const currentRouteName = route.name;
     if (CATEGORIES.includes(currentRouteName)) {
       setSelectedCategory(currentRouteName);
-      
-      // Scroll to make the selected category visible
       scrollToCategory(currentRouteName);
     }
   }, [route.name]);
@@ -101,33 +98,37 @@ const CategoryBar = () => {
     if (scrollViewRef.current && categoryPositions[category]) {
       scrollViewRef.current.scrollTo({
         x: Math.max(0, categoryPositions[category] - width / 4),
-        animated: true
+        animated: true,
       });
     }
   };
 
-  // Handle navigation and category selection with interstitial ad
+  // Handle navigation with ad logic (show ad every 3rd navigation)
   const handleCategoryPress = useCallback(
     (category) => {
-      if (!CATEGORIES.includes(category)) return;
-  
+      if (!CATEGORIES.includes(category) || category === selectedCategory) return; // Prevent re-navigation to same category
+
       setSelectedCategory(category);
-  
-      if (interstitialLoaded) {
+      setNavigationCount((prevCount) => prevCount + 1); // Increment navigation counter
+
+      const shouldShowAd = (navigationCount + 1) % 3 === 0; // Show ad every 3rd navigation
+
+      if (interstitialLoaded && shouldShowAd) {
         interstitialRef.show();
         const unsubscribeClosed = interstitialRef.addAdEventListener(
           AdEventType.CLOSED,
           () => {
-            navigation.replace(category);  // Changed from reset to replace
+            navigation.replace(category);
             unsubscribeClosed();
           }
         );
       } else {
-        navigation.replace(category);  // Changed from reset to replace
+        navigation.replace(category); // Navigate immediately if no ad
       }
     },
-    [navigation, interstitialLoaded],
+    [navigation, interstitialLoaded, navigationCount, selectedCategory]
   );
+
   // Measure and store category position when mounted
   const measurePosition = (category, event) => {
     const { x } = event.nativeEvent.layout;
@@ -162,12 +163,12 @@ const CategoryBar = () => {
                   isSelected && {
                     borderBottomColor: categoryColor,
                     borderBottomWidth: 3,
-                  }
+                  },
                 ]}>
-                <Text 
+                <Text
                   style={[
                     styles.categoryText,
-                    isSelected && { color: categoryColor, fontWeight: '700' }
+                    isSelected && { color: categoryColor, fontWeight: '700' },
                   ]}>
                   {category}
                 </Text>
@@ -180,14 +181,14 @@ const CategoryBar = () => {
       {/* Add a subtle shadow at the edges to indicate scrollability */}
       <LinearGradient
         colors={['rgba(18,18,18,0.9)', 'rgba(18,18,18,0)']}
-        start={{x: 0, y: 0.5}}
-        end={{x: 0.05, y: 0.5}}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 0.05, y: 0.5 }}
         style={styles.leftShadow}
       />
       <LinearGradient
         colors={['rgba(18,18,18,0)', 'rgba(18,18,18,0.9)']}
-        start={{x: 0.95, y: 0.5}}
-        end={{x: 1, y: 0.5}}
+        start={{ x: 0.95, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
         style={styles.rightShadow}
       />
     </View>
@@ -227,7 +228,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  // Edge shadows to indicate scrollability
   leftShadow: {
     position: 'absolute',
     left: 0,

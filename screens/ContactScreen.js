@@ -12,7 +12,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 
-const ContactScreen = ({navigation}) => {
+const ContactScreen = ({ navigation }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -22,7 +22,8 @@ const ContactScreen = ({navigation}) => {
   // Animations
   const fadeAnim = useState(new Animated.Value(0))[0];
   const slideAnim = useState(new Animated.Value(50))[0];
-  
+  const shakeAnim = useState(new Animated.Value(0))[0];
+
   useEffect(() => {
     // Entrance animation
     Animated.parallel([
@@ -41,18 +42,14 @@ const ContactScreen = ({navigation}) => {
 
   const handleSendEmail = async () => {
     if (!name || !email || !message) {
-      // Animated validation error
+      // Shake animation for validation error
       animateShake();
       return;
     }
 
     setSending(true);
     
-    const data = {
-      name,
-      email,
-      message,
-    };
+    const data = { name, email, message };
 
     try {
       const response = await fetch('https://formspree.io/f/xwkgrbjl', {
@@ -83,12 +80,12 @@ const ContactScreen = ({navigation}) => {
   
   // Animation functions
   const animateShake = () => {
-    const shakeAnimation = new Animated.Value(0);
+    shakeAnim.setValue(0);
     Animated.sequence([
-      Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnimation, { toValue: -10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnimation, { toValue: 0, duration: 50, useNativeDriver: true })
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true })
     ]).start();
   };
   
@@ -101,27 +98,22 @@ const ContactScreen = ({navigation}) => {
   };
   
   const animateError = () => {
-    // Implement error animation if needed
+    animateShake();
   };
 
-  const getInputStyle = (inputName) => {
-    return [
-      styles.input,
-      inputFocus === inputName ? styles.inputFocused : null,
-    ];
-  };
+  const getInputStyle = (inputName) => [
+    styles.input,
+    inputFocus === inputName && styles.inputFocused
+  ];
 
   return (
-    <LinearGradient
-      colors={['#121438', '#2A1B5D', '#121438']}
-      style={styles.container}
-    >
+    <LinearGradient colors={['#121438', '#2A1B5D', '#121438']} style={styles.container}>
       <Animated.View 
         style={[
           styles.formContainer,
           { 
             opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
+            transform: [{ translateY: slideAnim }, { translateX: shakeAnim }]
           }
         ]}
       >
@@ -137,7 +129,7 @@ const ContactScreen = ({navigation}) => {
             placeholder="Your identifier"
             placeholderTextColor="#6D6A8A"
             value={name}
-            onChangeText={text => setName(text)}
+            onChangeText={setName}
             onFocus={() => setInputFocus('name')}
             onBlur={() => setInputFocus(null)}
             style={getInputStyle('name')}
@@ -150,7 +142,7 @@ const ContactScreen = ({navigation}) => {
             placeholder="Neural address"
             placeholderTextColor="#6D6A8A"
             value={email}
-            onChangeText={text => setEmail(text)}
+            onChangeText={setEmail}
             onFocus={() => setInputFocus('email')}
             onBlur={() => setInputFocus(null)}
             style={getInputStyle('email')}
@@ -163,7 +155,7 @@ const ContactScreen = ({navigation}) => {
             placeholder="Transmit your message"
             placeholderTextColor="#6D6A8A"
             value={message}
-            onChangeText={text => setMessage(text)}
+            onChangeText={setMessage}
             multiline
             numberOfLines={4}
             onFocus={() => setInputFocus('message')}
@@ -177,12 +169,7 @@ const ContactScreen = ({navigation}) => {
           onPress={handleSendEmail}
           disabled={sending}
         >
-          <LinearGradient
-            colors={['#5B4CFF', '#8A72FF']}
-            start={{x: 0, y: 0}}
-            end={{x: 1, y: 0}}
-            style={styles.buttonGradient}
-          >
+          <LinearGradient colors={['#5B4CFF', '#8A72FF']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.buttonGradient}>
             {sending ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
@@ -193,27 +180,10 @@ const ContactScreen = ({navigation}) => {
             )}
           </LinearGradient>
         </TouchableOpacity>
-        
-        <View style={styles.altContactMethods}>
-          <TouchableOpacity style={styles.altContactButton}>
-            <Icon name="phone" size={22} color="#8A85FF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.altContactButton}>
-            <Icon name="video" size={22} color="#8A85FF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.altContactButton}>
-            <Icon name="map-marker" size={22} color="#8A85FF" />
-          </TouchableOpacity>
-        </View>
       </Animated.View>
-      
-      {/* Dynamic background element */}
-      <View style={styles.glowCircle} />
-      <View style={styles.gridOverlay} />
     </LinearGradient>
   );
 };
-
 const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({

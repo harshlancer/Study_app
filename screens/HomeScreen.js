@@ -54,9 +54,11 @@ const HomeScreen = () => {
   const interstitialRef = useRef(
     InterstitialAd.createForAdRequest(interstitialAdUnitId, {
       requestNonPersonalizedAdsOnly: true,
+      tagForChildDirectedTreatment: true, // Add this
+      maxAdContentRating: 'G',
       keywords: ['current affairs', 'news', 'education'],
-    }),
-  ).current;
+    })
+  ).current;  
   
   const headerAnim = useRef(new Animated.Value(0)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;

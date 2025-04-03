@@ -1,5 +1,13 @@
-import notifee, { AndroidStyle, EventType, TriggerType, RepeatFrequency, AndroidImportance, AndroidVisibility, AndroidColor } from '@notifee/react-native';
-import { scheduleDailyMemeNotification } from './MemeScheduler';
+// NotificationScheduler.js
+import notifee, { 
+  AndroidStyle, 
+  EventType, 
+  TriggerType, 
+  RepeatFrequency, 
+  AndroidImportance, 
+  AndroidVisibility, 
+  AndroidColor 
+} from '@notifee/react-native';
 
 // Schedule a notification every 3 hours
 const scheduleNotification = async (newsItem) => {
@@ -8,6 +16,7 @@ const scheduleNotification = async (newsItem) => {
       console.warn('No news item provided for notification');
       return;
     }
+    
     // Create a channel (required for Android)
     const channelId = await notifee.createChannel({
       id: 'news',
@@ -17,51 +26,52 @@ const scheduleNotification = async (newsItem) => {
       visibility: AndroidVisibility.PUBLIC,
       vibration: true,
       vibrationPattern: [300, 500],
-      // Add lights for better visibility
       lights: true,
       lightColor: AndroidColor.BLUE,
     });
     
-    // Calculate the next 3-hour interval
-    const trigger = {
-      type: TriggerType.TIMESTAMP,
-      timestamp: getNext3HourTimestamp(), // First trigger at the next 3-hour mark
-      repeatFrequency: RepeatFrequency.HOURLY, // Use hourly repeat
-      interval: 3, // Repeat every 3 hours
-      alarmManager: true, // Use AlarmManager for more precise timing (Android only)
-    };
+    // For Android, make sure we have a valid icon
+    const largeIcon = newsItem.imageUrl && newsItem.imageUrl.startsWith('http') 
+      ? newsItem.imageUrl 
+      : null;
     
+    const picture = newsItem.imageUrl && newsItem.imageUrl.startsWith('http') 
+      ? newsItem.imageUrl 
+      : null;
+    
+    // Calculate the next trigger time (immediate + repeating)
+    const now = new Date();
+    const triggerDate = new Date(now.getTime() + 10000); // Start in 10 seconds for testing
+    
+    // Create the notification
     const notificationId = await notifee.createTriggerNotification(
       {
-        id: 'news-notification', // Unique ID for the repeating notification
-        title: newsItem.title,
-        body: newsItem.summary,
+        id: 'news-notification',
+        title: newsItem.title || 'News Update',
+        body: newsItem.summary || 'Check out the latest news',
         data: { 
           ...newsItem,
           type: 'news',
-          timestamp: Date.now(), // Store timestamp for our tracking
+          timestamp: Date.now(),
         },
         android: {
           channelId,
-          largeIcon: newsItem.imageUrl,
-          style: {
+          smallIcon: 'ic_notification', // Make sure this icon exists in your project
+          largeIcon: largeIcon,
+          color: '#4655F5',
+          style: picture ? {
             type: AndroidStyle.BIGPICTURE,
-            picture: newsItem.imageUrl,
-          },
+            picture: picture,
+          } : undefined,
           pressAction: {
             id: 'default',
-            launchActivity: '.default',
-            mainComponent: 'App',
           },
-          // Add timestamp to show time
           showTimestamp: true,
-          // Add actions for better user engagement
           actions: [
             {
               title: 'Read More',
               pressAction: {
                 id: 'read-more',
-                launchActivity: '.MainActivity',
               },
             },
             {
@@ -71,49 +81,31 @@ const scheduleNotification = async (newsItem) => {
               },
             },
           ],
-          // Make notifications auto-cancel when tapped
           autoCancel: true,
         },
         ios: {
-          attachments: [{ url: newsItem.imageUrl }],
-          categoryId: 'news',
-          // Add timestamp for iOS
+          attachments: newsItem.imageUrl ? [{ url: newsItem.imageUrl }] : [],
           sound: 'default',
-          // Add badge count
           badgeCount: 1,
-          // Improve interaction options
-          categoryId: 'news-category',
+          categoryId: 'news',
         },
       },
-      trigger,
+      {
+        type: TriggerType.INTERVAL,
+        timeUnit: 'hours',
+        interval: 3,
+      },
     );
-    console.log('News notification scheduled with ID:', notificationId);
+    
+    // Also display an immediate notification for testing
+    
+    
+    console.log('Notification scheduled with ID:', notificationId);
     return notificationId;
   } catch (error) {
     console.error('Error scheduling news notification:', error);
-    throw error; // Propagate error for better error handling
+    throw error;
   }
-};
-
-// Helper function to get the next 3-hour interval timestamp
-const getNext3HourTimestamp = () => {
-  const now = new Date();
-  const hours = now.getHours();
-  const minutes = now.getMinutes();
-  const seconds = now.getSeconds();
-  const milliseconds = now.getMilliseconds();
-  
-  // Calculate how many hours until the next 3-hour mark
-  const hoursUntilNext = 3 - (hours % 3);
-  const nextTrigger = new Date(now);
-  nextTrigger.setHours(hours + hoursUntilNext, 0, 0, 0); // Set to next 3-hour mark (e.g., 3:00, 6:00)
-  
-  // If we're exactly at a 3-hour mark, set for the next one
-  if (minutes === 0 && seconds === 0 && milliseconds === 0 && hours % 3 === 0) {
-    nextTrigger.setHours(hours + 3, 0, 0, 0);
-  }
-  
-  return nextTrigger.getTime();
 };
 
 // Cancel all scheduled notifications
@@ -140,41 +132,29 @@ const listScheduledNotifications = async () => {
 };
 
 // Set up notification listeners with improved handling
-const setupNotificationListeners = () => {
+const setupNotificationListeners = (onNotificationPress) => {
   return notifee.onForegroundEvent(({ type, detail }) => {
+    console.log('Foreground event received:', type, detail);
+    
     switch (type) {
       case EventType.DISMISSED:
         console.log('User dismissed notification', detail.notification);
         break;
       case EventType.PRESS:
         console.log('User pressed notification', detail.notification);
-        
-        // Handle navigation based on notification type
-        const notificationType = detail.notification?.data?.type;
-        const pressActionId = detail.pressAction?.id;
-        
-        if (notificationType === 'news') {
-          // Handle news notification press
-          console.log('News notification pressed:', detail.notification.data);
-          // Different actions based on which button was pressed
-          if (pressActionId === 'read-more') {
-            // Navigate to full article
-            console.log('User wants to read more');
-          } else if (pressActionId === 'dismiss') {
-            // Do nothing, notification is automatically dismissed
-          }
-        } else if (notificationType === 'meme') {
-          // Handle meme notification press
-          console.log('Meme notification pressed:', detail.notification.data);
-          // You could handle deep linking to the current affairs screen here
+        if (onNotificationPress && typeof onNotificationPress === 'function') {
+          onNotificationPress(detail.notification);
         }
         break;
       case EventType.TRIGGER:
         console.log('Notification triggered', detail.notification);
         break;
       case EventType.ACTION_PRESS:
-        console.log('Action pressed on notification', detail.pressAction);
+        console.log('User pressed action', detail.pressAction);
         // Handle specific action buttons
+        if (detail.pressAction.id === 'read-more' && onNotificationPress) {
+          onNotificationPress(detail.notification);
+        }
         break;
     }
   });
@@ -196,21 +176,60 @@ const updateNewsNotification = async (newsItem) => {
 };
 
 // Set up background handler (should be called in index.js)
-const registerBackgroundHandler = () => {
+const registerBackgroundHandler = (onNotificationPress) => {
   return notifee.onBackgroundEvent(async ({ type, detail }) => {
-    const { notification } = detail;
+    console.log('Background event received:', type, detail);
     
     if (type === EventType.PRESS) {
-      // Handle notification press in background
-      console.log('Background notification pressed:', notification);
+      console.log('User pressed notification in background', detail.notification);
+      if (onNotificationPress && typeof onNotificationPress === 'function') {
+        onNotificationPress(detail.notification);
+      }
     }
     
-    // Handle background action presses
     if (type === EventType.ACTION_PRESS) {
-      const { pressAction } = detail;
-      console.log('Action pressed in background:', pressAction.id);
+      console.log('User pressed action in background', detail.pressAction);
+      if (detail.pressAction.id === 'read-more' && onNotificationPress) {
+        onNotificationPress(detail.notification);
+      }
     }
+    
+    return Promise.resolve();
   });
+};
+
+// Test function to send an immediate notification
+const sendTestNotification = async () => {
+  try {
+    const channelId = await notifee.createChannel({
+      id: 'test',
+      name: 'Test Channel',
+      importance: AndroidImportance.HIGH,
+    });
+    
+    await notifee.displayNotification({
+      id: 'test',
+      title: 'Test Notification',
+      body: 'This is a test notification to verify notifications are working',
+      android: {
+        channelId,
+        smallIcon: 'ic_notification',
+        importance: AndroidImportance.HIGH,
+        pressAction: {
+          id: 'default',
+        },
+      },
+      ios: {
+        sound: 'default',
+      },
+    });
+    
+    console.log('Test notification sent');
+    return true;
+  } catch (error) {
+    console.error('Error sending test notification:', error);
+    return false;
+  }
 };
 
 export {
@@ -220,4 +239,5 @@ export {
   listScheduledNotifications,
   setupNotificationListeners,
   registerBackgroundHandler,
+  sendTestNotification,
 };

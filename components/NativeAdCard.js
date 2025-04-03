@@ -1,11 +1,12 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import {
   NativeAdView,
   NativeAsset,
   NativeMediaView,
   NativeMediaAspectRatio,
-  NativeAssetType // Added missing import
+  NativeAssetType,
 } from 'react-native-google-mobile-ads';
 
 const NativeAdCard = ({ nativeAd }) => {
@@ -13,6 +14,10 @@ const NativeAdCard = ({ nativeAd }) => {
 
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={['#1E1E1E', '#121212']}
+        style={styles.gradientBackground}
+      />
       <NativeAdView nativeAd={nativeAd} style={styles.adContainer}>
         {/* Header with icon and headline */}
         <View style={styles.header}>
@@ -23,14 +28,16 @@ const NativeAdCard = ({ nativeAd }) => {
           )}
           <View style={styles.headerText}>
             <NativeAsset assetType={NativeAssetType.HEADLINE}>
-              <Text style={styles.headline} numberOfLines={2}>{nativeAd.headline}</Text>
+              <Text style={styles.headline} numberOfLines={2}>
+                {nativeAd.headline}
+              </Text>
             </NativeAsset>
             <Text style={styles.sponsored}>Sponsored</Text>
           </View>
         </View>
 
-        {/* Media content (image or video) */}
-        <NativeMediaView 
+        {/* Media content */}
+        <NativeMediaView
           style={styles.media}
           resizeMode="cover"
           aspectRatio={NativeMediaAspectRatio.LANDSCAPE}
@@ -45,7 +52,9 @@ const NativeAdCard = ({ nativeAd }) => {
           )}
           {nativeAd.body && (
             <NativeAsset assetType={NativeAssetType.BODY}>
-              <Text style={styles.bodyText} numberOfLines={3}>{nativeAd.body}</Text>
+              <Text style={styles.bodyText} numberOfLines={3}>
+                {nativeAd.body}
+              </Text>
             </NativeAsset>
           )}
         </View>
@@ -54,7 +63,13 @@ const NativeAdCard = ({ nativeAd }) => {
         {nativeAd.callToAction && (
           <NativeAsset assetType={NativeAssetType.CALL_TO_ACTION}>
             <TouchableOpacity style={styles.ctaButton}>
-              <Text style={styles.ctaText}>{nativeAd.callToAction}</Text>
+              <LinearGradient
+                colors={['#5D5DFB', '#5D5DFB99']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.ctaGradient}>
+                <Text style={styles.ctaText}>{nativeAd.callToAction}</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </NativeAsset>
         )}
@@ -63,32 +78,40 @@ const NativeAdCard = ({ nativeAd }) => {
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    width: '100%',
+    borderRadius: 12,
     overflow: 'hidden',
-    margin: 10,
-    elevation: 3,
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  gradientBackground: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   adContainer: {
     padding: 12,
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
     marginBottom: 10,
+    alignItems: 'center',
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     overflow: 'hidden',
     marginRight: 10,
+    backgroundColor: '#ffffff20',
   },
   icon: {
     width: '100%',
@@ -101,45 +124,50 @@ const styles = StyleSheet.create({
   },
   headline: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: 0.5,
   },
   sponsored: {
     fontSize: 12,
-    color: '#666',
+    color: '#ffffff80',
     marginTop: 2,
   },
   media: {
     width: '100%',
-    height: 180,
-    borderRadius: 4,
+    height: 120, // Reduced height for splash screen
+    borderRadius: 8,
     marginBottom: 10,
+    backgroundColor: '#ffffff10',
   },
   body: {
     marginBottom: 10,
   },
   advertiser: {
     fontSize: 14,
-    color: '#555',
+    color: '#ffffffcc',
     fontWeight: '500',
     marginBottom: 5,
   },
   bodyText: {
     fontSize: 14,
-    color: '#666',
+    color: '#ffffff99',
     lineHeight: 20,
   },
   ctaButton: {
-    backgroundColor: '#5D5DFB',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 4,
+    borderRadius: 6,
+    overflow: 'hidden',
     alignSelf: 'flex-start',
   },
+  ctaGradient: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
   ctaText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: '#FFF',
+    fontWeight: '700',
     fontSize: 14,
+    textTransform: 'uppercase',
   },
 });
 

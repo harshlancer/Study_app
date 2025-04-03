@@ -16,12 +16,10 @@ const fetchWcq = async () => {
     // Try to get cached data first
     const cachedData = await getCachedWcqs();
     if (cachedData) {
-      console.log('Using cached WCQ data');
       return cachedData;
     }
     
     // Fetch fresh data if cache not available
-    console.log('Fetching fresh WCQ data');
     const wcqs = await fetchFreshWcqs();
     
     // Cache the new data
@@ -132,7 +130,6 @@ const getCachedWcqs = async () => {
     
     // Check if cache is still valid
     if (now - timestamp > CACHE_DURATION) {
-      console.log('Cache expired');
       return null; // Cache expired
     }
     
@@ -157,7 +154,6 @@ const cacheWcqs = async (wcqs) => {
     // Store the timestamp
     await AsyncStorage.setItem(CACHE_KEYS.FETCH_TIMESTAMP, Date.now().toString());
     
-    console.log('WCQ data cached successfully');
   } catch (error) {
     console.error('Error caching WCQ data:', error);
   }

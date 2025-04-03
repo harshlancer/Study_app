@@ -16,12 +16,10 @@ const fetchMCQs = async () => {
     // Try to get cached data first
     const cachedData = await getCachedMCQs();
     if (cachedData) {
-      console.log('Using cached MCQ data');
       return cachedData;
     }
     
     // Fetch fresh data if cache not available
-    console.log('Fetching fresh MCQ data');
     const mcqs = await fetchFreshMCQs();
     
     // Cache the new data
@@ -132,7 +130,6 @@ const getCachedMCQs = async () => {
     
     // Check if cache is still valid
     if (now - timestamp > CACHE_DURATION) {
-      console.log('Cache expired');
       return null; // Cache expired
     }
     
@@ -157,7 +154,6 @@ const cacheMCQs = async (mcqs) => {
     // Store the timestamp
     await AsyncStorage.setItem(CACHE_KEYS.FETCH_TIMESTAMP, Date.now().toString());
     
-    console.log('MCQ data cached successfully');
   } catch (error) {
     console.error('Error caching MCQ data:', error);
   }

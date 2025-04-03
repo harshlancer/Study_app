@@ -183,7 +183,6 @@ const NewsCard = ({
       const result = await Share.share(shareOptions);
       
       if (result.action === Share.sharedAction) {
-        console.log('Share was successful');
       }
     } catch (error) {
       console.error('Error sharing:', error);
@@ -315,7 +314,6 @@ const NewsCard = ({
                           </View>
                         )}
                         onError={e => {
-                          console.log('WebView error:', e);
                         }}
                         scrollEnabled={true}
                         nestedScrollEnabled={true}

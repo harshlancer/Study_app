@@ -49,7 +49,6 @@ const PDFViewerScreen = ({ route, navigation }) => {
       const fileExists = await FileSystem.exists(localPath); // Updated here
       
       if (fileExists) {
-        console.log('PDF already cached:', localPath);
         setLocalPdfPath(localPath);
         setLoading(false);
       } else {
@@ -163,10 +162,8 @@ const PDFViewerScreen = ({ route, navigation }) => {
           <Pdf
             source={{ uri: Platform.OS === 'ios' ? localPdfPath : `file://${localPdfPath}` }}
             onLoadComplete={(numberOfPages, filePath) => {
-              console.log(`PDF loaded with ${numberOfPages} pages`);
             }}
             onPageChanged={(page, numberOfPages) => {
-              console.log(`Current page: ${page}`);
             }}
             onError={(error) => {
               console.error('Error loading PDF:', error);

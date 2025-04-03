@@ -2,7 +2,6 @@
 import notifee from '@notifee/react-native';
 
 export default async (taskData) => {
-  console.log('Headless task triggered:', taskData);
 
   // Schedule notifications
   const channelId = await notifee.createChannel({

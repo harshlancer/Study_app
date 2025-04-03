@@ -1,4 +1,13 @@
-import notifee, { AndroidStyle, EventType, TriggerType, RepeatFrequency, AndroidImportance, AndroidVisibility, AndroidColor } from '@notifee/react-native';
+// MemeScheduler.js
+import notifee, { 
+  AndroidStyle, 
+  EventType, 
+  TriggerType, 
+  RepeatFrequency, 
+  AndroidImportance, 
+  AndroidVisibility, 
+  AndroidColor 
+} from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Meme data
@@ -49,7 +58,6 @@ const getRandomMeme = async () => {
     if (sentMemes.length >= MEMES.length) {
       sentMemes = [];
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sentMemes));
-      console.log('Reset meme tracking - all memes have been used');
     }
 
     // Get available memes (ones that haven't been sent)
@@ -66,7 +74,6 @@ const getRandomMeme = async () => {
     sentMemes.push(originalIndex);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sentMemes));
     
-    console.log(`Selected meme ${originalIndex + 1}/${MEMES.length}: ${memeText.substring(0, 30)}...`);
     return memeText;
   } catch (error) {
     console.error('Error getting random meme:', error);
@@ -103,13 +110,6 @@ const scheduleDailyMemeNotification = async () => {
       date.setDate(date.getDate() + 1); // Move to tomorrow
     }
 
-    const trigger = {
-      type: TriggerType.TIMESTAMP,
-      timestamp: date.getTime(), // Trigger at 10 AM
-      repeatFrequency: RepeatFrequency.DAILY, // Repeat daily
-      alarmManager: true, // Use AlarmManager for precise timing (Android only)
-    };
-
     // Create the notification
     const notificationId = await notifee.createTriggerNotification(
       {
@@ -118,17 +118,14 @@ const scheduleDailyMemeNotification = async () => {
         body: memeText,
         data: {
           type: 'meme',
-          deepLink: 'editorial://currentaffairs',
           timestamp: Date.now(),
         },
         android: {
           channelId,
-          smallIcon: 'ic_notification', // Use your app icon
-          largeIcon: "ic_launcher",
-          color: '#4655F5FF', // Amber color for meme notifications
+          smallIcon: 'ic_notification', // Make sure this icon exists in your project
+          importance: AndroidImportance.HIGH,
           pressAction: {
             id: 'default',
-            launchActivity: 'com.chronosbrief.MainActivity',
           },
           style: {
             type: AndroidStyle.BIGTEXT,
@@ -152,22 +149,27 @@ const scheduleDailyMemeNotification = async () => {
           autoCancel: true,
         },
         ios: {
-          categoryId: 'currentAffairs',
           sound: 'default',
           badgeCount: 1,
-          categoryId: 'meme-category',
+          categoryId: 'meme',
         },
       },
-      trigger,
+      {
+        type: TriggerType.TIMESTAMP,
+        timestamp: date.getTime(),
+        repeats: true,
+        alarmManager: true,
+      },
     );
 
-    console.log('Daily meme notification scheduled for 10 AM');
+    console.log('Daily meme notification scheduled with ID:', notificationId);
     return notificationId;
   } catch (error) {
     console.error('Error scheduling meme notification:', error);
     throw error;
   }
 };
+
 // For testing: Send an immediate meme notification
 const sendImmediateMemeNotification = async () => {
   try {
@@ -193,17 +195,14 @@ const sendImmediateMemeNotification = async () => {
       body: memeText,
       data: {
         type: 'meme',
-        deepLink: 'editorial://currentaffairs',
         timestamp: Date.now(),
       },
       android: {
         channelId,
         smallIcon: 'ic_notification',
-        largeIcon: "ic_launcher",
-        color: '#FFC107',
+        importance: AndroidImportance.HIGH,
         pressAction: {
           id: 'default',
-          launchActivity: '.MainActivity',
         },
         style: {
           type: AndroidStyle.BIGTEXT,
@@ -227,10 +226,9 @@ const sendImmediateMemeNotification = async () => {
         autoCancel: true,
       },
       ios: {
-        categoryId: 'currentAffairs',
         sound: 'default',
         badgeCount: 1,
-        categoryId: 'meme-category',
+        categoryId: 'meme',
       },
     });
 
@@ -250,7 +248,10 @@ const initializeMemeNotifications = async () => {
     
     // This will schedule the daily meme notification
     await scheduleDailyMemeNotification();
-    console.log('Meme notifications initialized');
+    
+    // Also send an immediate meme notification for testing
+    await sendImmediateMemeNotification();
+    
     return true;
   } catch (error) {
     console.error('Error initializing meme notifications:', error);

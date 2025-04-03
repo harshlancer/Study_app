@@ -1,23 +1,22 @@
-import React, { useEffect } from 'react';
-import { Provider } from 'react-redux';
+// App.js
+import React, {useEffect, useRef} from 'react';
+import {Provider} from 'react-redux';
 import store from './store/store.js';
-import AppNavigator from './navigation/AppNavigator.js';
-import notifee from '@notifee/react-native';
-import { 
-  scheduleNotification, 
-  setupNotificationListeners, 
+import AppNavigator from './navigation/AppNavigator'; // Changed to default import
+import {Platform, Linking, Alert} from 'react-native';
+import notifee, {AuthorizationStatus} from '@notifee/react-native';
+import {
+  scheduleNotification,
+  setupNotificationListeners,
   listScheduledNotifications,
-  registerBackgroundHandler 
+  registerBackgroundHandler,
+  sendTestNotification,
 } from './components/NotificationScheduler.js';
-import { 
-  initializeMemeNotifications, 
-  sendImmediateMemeNotification 
+import {
+  initializeMemeNotifications,
+  sendImmediateMemeNotification,
 } from './components/MemeScheduler.js';
-import { Linking } from 'react-native';
 import HTMLParser from 'react-native-html-parser';
-
-// Navigation reference for handling notification presses
-let navigationRef;
 
 // Function to fetch initial news data
 const fetchInitialNews = async () => {
@@ -48,12 +47,18 @@ const fetchInitialNews = async () => {
     }
 
     const article = articles[0];
-    const titleElement = article.getElementsByTagName('h3')[0]?.getElementsByTagName('a')[0];
-    const title = titleElement?.textContent.trim() || 'No Title';
-    const summary = article.getElementsByTagName('p')[0]?.textContent.trim() || 'No Summary';
-    const imageUrl = article.getElementsByTagName('img')[0]?.getAttribute('src') || 'https://via.placeholder.com/600x300';
+    const titleElement = article
+      .getElementsByTagName('h3')[0]
+      ?.getElementsByTagName('a')[0];
+    const title = titleElement?.textContent.trim() || 'News Update';
+    const summary =
+      article.getElementsByTagName('p')[0]?.textContent.trim() ||
+      'Check out the latest news';
+    const imageUrl =
+      article.getElementsByTagName('img')[0]?.getAttribute('src') || null;
 
-    return { title, summary, imageUrl };
+    console.log('Fetched news:', {title, summary, imageUrl});
+    return {title, summary, imageUrl};
   } catch (error) {
     console.error('Error fetching initial news:', error);
     return null;
@@ -61,37 +66,62 @@ const fetchInitialNews = async () => {
 };
 
 // Handle deep linking
-const handleDeepLink = (url) => {
-  if (!url || !navigationRef) return;
-  
+const handleDeepLink = (url, navigationRef) => {
+  if (!url || !navigationRef.current) return;
+
+  console.log('Handling deep link:', url);
   const route = url.replace(/.*?:\/\//g, '');
   const [screen, params] = route.split('/');
-  
+
   if (screen === 'currentaffairs') {
-    navigationRef.navigate('CurrentAffairs');
+    navigationRef.current.navigate('CurrentAffairs');
   } else if (screen === 'news') {
-    navigationRef.navigate('NewsScreen', { newsItem: JSON.parse(params) });
+    navigationRef.current.navigate('NewsScreen', {
+      newsItem: params ? JSON.parse(params) : null,
+    });
   }
 };
 
 const App = () => {
+  const navigationRef = useRef(null);
+
   useEffect(() => {
     const initializeNotifications = async () => {
-      // Request notification permissions
-      const settings = await notifee.requestPermission();
-      if (settings.authorizationStatus >= 1) {
-        console.log('Notification permissions granted');
+      try {
+        // Request permission
+        const settings = await notifee.requestPermission();
+        console.log('Notification settings:', settings);
 
-        // Fetch initial news data
+        // Check if we have permission
+        if (settings.authorizationStatus < AuthorizationStatus.AUTHORIZED) {
+          console.warn('Notification permission not granted');
+          Alert.alert(
+            'Notification Permission',
+            'Please enable notifications in your device settings to receive updates.',
+          );
+          return;
+        }
+
+        // For Android, request exact alarm permission
+        if (Platform.OS === 'android') {
+          const hasPermission = await notifee.isExactAlarmPermissionGranted();
+          if (!hasPermission) {
+            await notifee.requestExactAlarmPermission();
+          }
+        }
+
+        // Send a test notification to check if notifications are working
+        await sendTestNotification();
+
+        // Fetch news and schedule notifications
         const newsItem = await fetchInitialNews();
         let newsScheduled = false;
 
         if (newsItem) {
           try {
-            // Schedule the news notification every 3 hours
             await scheduleNotification(newsItem);
             newsScheduled = true;
-            console.log('News notifications scheduled successfully');
+            console.log('News notification scheduled successfully');
           } catch (error) {
             console.error('Failed to schedule news notifications:', error);
           }
@@ -99,80 +129,72 @@ const App = () => {
           console.warn('No news item fetched, skipping news notification');
         }
 
-        // Initialize daily meme notifications regardless of news status
+        // Initialize meme notifications
         await initializeMemeNotifications();
 
-        // If news notifications failed, send an immediate meme as fallback
-        if (!newsScheduled) {
-          console.log('Sending immediate meme notification as fallback');
-          try {
-            await sendImmediateMemeNotification();
-          } catch (memeError) {
-            console.error('Even fallback meme notification failed:', memeError);
-          }
-        }
-
-        // Log scheduled notifications for debugging
-        await listScheduledNotifications();
-      } else {
-        console.log('Notification permissions denied');
+        // List scheduled notifications for debugging
+        const scheduledNotifications = await listScheduledNotifications();
+        console.log(
+          `Total scheduled notifications: ${scheduledNotifications.length}`,
+        );
+      } catch (error) {
+        console.error('Error in initialization:', error);
       }
-
-      // Set up listeners
-      const unsubscribeForeground = setupNotificationListeners((notification) => {
-        handleNotificationPress(notification);
-      });
-      
-      // Register background handler
-      const unsubscribeBackground = registerBackgroundHandler((notification) => {
-        handleNotificationPress(notification);
-      });
-
-      // Set up deep linking listener
-      const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
-        handleDeepLink(url);
-      });
-
-      // Check for initial deep link
-      Linking.getInitialURL().then(url => {
-        if (url) handleDeepLink(url);
-      });
-
-      return () => {
-        unsubscribeForeground();
-        unsubscribeBackground();
-        linkingSubscription.remove();
-      };
     };
 
+    // Set up notification listeners
+    const unsubscribeForeground = setupNotificationListeners(notification => {
+      handleNotificationPress(notification, navigationRef);
+    });
+
+    // Register background handler
+    const unsubscribeBackground = registerBackgroundHandler(notification => {
+      handleNotificationPress(notification, navigationRef);
+    });
+
+    // Set up deep linking
+    const linkingSubscription = Linking.addEventListener('url', ({url}) => {
+      handleDeepLink(url, navigationRef);
+    });
+
+    // Check for initial URL (from deep link)
+    Linking.getInitialURL().then(url => {
+      if (url) handleDeepLink(url, navigationRef);
+    });
+
+    // Initialize notifications
     initializeNotifications();
+
+    // Clean up
+    return () => {
+      if (unsubscribeForeground) unsubscribeForeground();
+      if (unsubscribeBackground) unsubscribeBackground();
+      if (linkingSubscription) linkingSubscription.remove();
+    };
   }, []);
 
-  // Handle notification press events
-  const handleNotificationPress = (notification) => {
-    if (!navigationRef) return;
-    
-    const notificationType = notification?.data?.type;
-    const pressActionId = notification?.pressAction?.id;
+  // Handle notification press
+  const handleNotificationPress = (notification, navigationRef) => {
+    if (!navigationRef.current) {
+      console.warn('Navigation ref not available');
+      return;
+    }
 
-    if (pressActionId === 'dismiss') return;
+    console.log('Handling notification press:', notification);
+    const notificationType = notification?.data?.type;
 
     if (notificationType === 'news') {
-      navigationRef.navigate('NewsScreen', { 
-        newsItem: notification.data 
+      navigationRef.current.navigate('NewsScreen', {
+        newsItem: notification.data,
       });
     } else if (notificationType === 'meme') {
-      navigationRef.navigate('CurrentAffairs');
+      navigationRef.current.navigate('CurrentAffairs');
     }
   };
 
   return (
     <Provider store={store}>
-      <AppNavigator 
-        ref={(ref) => {
-          navigationRef = ref;
-        }} 
-      />
+      <AppNavigator ref={navigationRef} />
     </Provider>
   );
 };

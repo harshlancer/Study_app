@@ -16,7 +16,6 @@ const Business = () => {
 
   const fetchIndianExpressNews = async () => {
     try {
-      console.log('Starting fetch request to Indian Express');
       const response = await fetch('https://indianexpress.com/section/business/');
       const htmlText = await response.text();
       

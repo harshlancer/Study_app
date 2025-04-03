@@ -78,7 +78,6 @@ const WeeklyCurrentAffairs = () => {
       if (cachedPdfs) {
         const parsedData = JSON.parse(cachedPdfs);
         setOfflinePdfs(parsedData);
-        console.log('Loaded offline PDFs:', Object.keys(parsedData).length);
       }
     } catch (error) {
       console.error('Error loading offline PDFs:', error);
@@ -188,12 +187,10 @@ const WeeklyCurrentAffairs = () => {
 
     loadingTimeoutRef.current = setTimeout(() => {
       if (pdfMounted.current && pdfLoading) {
-        console.log('Forcing PDF loading completion via timeout');
         setPdfLoading(false);
       }
     }, 12000); // 12 second timeout
 
-    console.log('Viewing PDF from:', localPath ? 'local storage' : 'network');
   };
 
   // Force hide loading if progress is high enough
@@ -297,7 +294,6 @@ const WeeklyCurrentAffairs = () => {
           setDownloadProgress(progress);
         });
 
-      console.log('PDF downloaded to:', response.path());
 
       // Add to offline PDFs
       const updatedOfflinePdfs = {
@@ -359,7 +355,6 @@ const WeeklyCurrentAffairs = () => {
   };
 
   const handlePdfLoadComplete = (numberOfPages, filePath) => {
-    console.log(`PDF loaded successfully with ${numberOfPages} pages`);
     if (pdfMounted.current) {
       setPdfLoading(false);
       clearTimeout(loadingTimeoutRef.current);
@@ -388,7 +383,6 @@ const WeeklyCurrentAffairs = () => {
   };
 
   const handlePdfLoadProgress = percentage => {
-    console.log(`Loading PDF: ${(percentage * 100).toFixed(1)}%`);
     if (pdfMounted.current) {
       setPdfLoadProgress(percentage);
     }
@@ -518,7 +512,6 @@ const WeeklyCurrentAffairs = () => {
                     style={[styles.pdf, isFullScreen && styles.fullScreenPdf]}
                     onLoadComplete={handlePdfLoadComplete}
                     onPageChanged={(page, totalPages) => {
-                      console.log(`Current page: ${page}/${totalPages}`);
                     }}
                     onError={handlePdfError}
                     onLoadProgress={handlePdfLoadProgress}

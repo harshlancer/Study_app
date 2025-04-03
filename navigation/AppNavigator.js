@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import HomeScreen from '../screens/HomeScreen';
@@ -19,9 +19,10 @@ import AboutUsScreen from '../screens/AboutUsScreen';
 
 const Stack = createStackNavigator();
 
-const AppNavigator = () => {
+// Wrap the component with forwardRef to accept and pass the ref
+const AppNavigator = forwardRef((props, ref) => {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={ref}>
       <Stack.Navigator
         initialRouteName="Splash"
         screenOptions={{
@@ -144,6 +145,6 @@ const AppNavigator = () => {
       </Stack.Navigator>
     </NavigationContainer>
   );
-};
+});
 
 export default AppNavigator;

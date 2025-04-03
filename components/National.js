@@ -573,24 +573,15 @@ const National = () => {
 
         // Debug information for troubleshooting
         if (process.env.NODE_ENV === 'development') {
-          console.log(
-            `Comparing: ${a.source} - ${a.time} (${dateA}) vs ${b.source} - ${b.time} (${dateB})`,
-          );
+          
         }
 
         return dateB.getTime() - dateA.getTime();
       });
 
-      console.log(`Fetched ${sortedNews.length} news items with summaries`);
       if (sortedNews.length > 0 && process.env.NODE_ENV === 'development') {
-        console.log('First few items after sorting:');
         sortedNews.slice(0, 3).forEach((item, i) => {
-          console.log(
-            `${i + 1}. ${item.source}: ${item.time} - ${item.title.substring(
-              0,
-              50,
-            )}...`,
-          );
+          
         });
       }
 
