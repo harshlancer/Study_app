@@ -1,4 +1,3 @@
-// MemeScheduler.js
 import notifee, { 
   AndroidStyle, 
   EventType, 
@@ -10,7 +9,7 @@ import notifee, {
 } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Meme data
+// Meme data - study-related humorous quotes
 const MEMES = [
   "Padhai ka plan to perfect tha, bas execution ka mood nahi tha.",
   "Motivation aata hai, par zyada der rukta nahi.",
@@ -44,24 +43,29 @@ const MEMES = [
   "Agar procrastination Olympic sport hota, to hum gold medalist hote."
 ];
 
-// Track which memes have been sent to avoid repeats until all are used
-const STORAGE_KEY = 'sent_memes_index';
+// Storage keys
+const SENT_MEMES_KEY = 'sent_memes_index';
+const LAST_MEME_KEY = 'last_sent_meme';
 
 // Get a random meme that hasn't been sent recently
 const getRandomMeme = async () => {
   try {
+    // Get the last sent meme to avoid immediate repetition
+    const lastMemeText = await AsyncStorage.getItem(LAST_MEME_KEY);
+    
     // Get the list of already sent meme indices
-    const sentMemesJson = await AsyncStorage.getItem(STORAGE_KEY);
+    const sentMemesJson = await AsyncStorage.getItem(SENT_MEMES_KEY);
     let sentMemes = sentMemesJson ? JSON.parse(sentMemesJson) : [];
 
-    // If all memes have been sent, reset the sent list
-    if (sentMemes.length >= MEMES.length) {
-      sentMemes = [];
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sentMemes));
+    // If all memes have been sent, reset the sent list but keep the last one
+    // to avoid immediate repetition
+    if (sentMemes.length >= MEMES.length - 1) {
+      sentMemes = lastMemeText ? [MEMES.indexOf(lastMemeText)] : [];
+      await AsyncStorage.setItem(SENT_MEMES_KEY, JSON.stringify(sentMemes));
     }
 
     // Get available memes (ones that haven't been sent)
-    const availableMemes = MEMES.filter((_, index) => !sentMemes.includes(index));
+    const availableMemes = MEMES.filter((meme, index) => !sentMemes.includes(index));
     
     // Pick a random meme from available ones
     const randomIndex = Math.floor(Math.random() * availableMemes.length);
@@ -70,9 +74,12 @@ const getRandomMeme = async () => {
     // Find the actual index in the original array
     const originalIndex = MEMES.indexOf(memeText);
     
+    // Save this as the last sent meme
+    await AsyncStorage.setItem(LAST_MEME_KEY, memeText);
+    
     // Add this meme to the sent list
     sentMemes.push(originalIndex);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sentMemes));
+    await AsyncStorage.setItem(SENT_MEMES_KEY, JSON.stringify(sentMemes));
     
     return memeText;
   } catch (error) {
@@ -83,11 +90,25 @@ const getRandomMeme = async () => {
   }
 };
 
+// Add emoji to meme text to make it more visually appealing
+const enhanceMemeText = (memeText) => {
+  const emojis = ['😅', '😂', '🤣', '😄', '📚', '✏️', '🧠', '💭', '⏰', '💡', '🎓', '📝'];
+  const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+  return `${randomEmoji} ${memeText}`;
+};
+
 // Schedule a daily meme notification
 const scheduleDailyMemeNotification = async () => {
   try {
     // Get a random meme
     const memeText = await getRandomMeme();
+    
+    if (!memeText || memeText.trim() === '') {
+      console.warn('Empty meme text, skipping notification');
+      return null;
+    }
+    
+    const enhancedMemeText = enhanceMemeText(memeText);
 
     // Create a channel (required for Android)
     const channelId = await notifee.createChannel({
@@ -96,9 +117,10 @@ const scheduleDailyMemeNotification = async () => {
       description: 'Daily study memes to brighten your day',
       importance: AndroidImportance.HIGH,
       vibration: true,
-      vibrationPattern: [300, 500],
+      vibrationPattern: [300, 500, 300, 500],
       lights: true,
       lightColor: AndroidColor.YELLOW,
+      sound: 'meme_notification', // Make sure this sound file exists in android/app/src/main/res/raw/
     });
 
     // Set trigger for 10 AM daily
@@ -110,59 +132,76 @@ const scheduleDailyMemeNotification = async () => {
       date.setDate(date.getDate() + 1); // Move to tomorrow
     }
 
+    // Generate a unique ID
+    const notificationId = `meme-${Date.now()}`;
+
     // Create the notification
-    const notificationId = await notifee.createTriggerNotification(
+    await notifee.createTriggerNotification(
       {
-        id: 'daily-meme',
-        title: 'Study Break ✍️',
-        body: memeText,
+        id: notificationId,
+        title: '✍️ Study Break Meme!',
+        body: enhancedMemeText,
         data: {
           type: 'meme',
           timestamp: Date.now(),
+          text: memeText,
         },
         android: {
           channelId,
-          smallIcon: 'ic_notification', // Make sure this icon exists in your project
+          smallIcon: 'ic_notification',
           importance: AndroidImportance.HIGH,
           pressAction: {
             id: 'default',
           },
           style: {
             type: AndroidStyle.BIGTEXT,
-            text: memeText,
+            text: enhancedMemeText,
           },
           showTimestamp: true,
+          color: '#FFD700', // Gold color for meme notifications
           actions: [
             {
-              title: 'Share',
+              title: '🔔 Remind Later',
+              pressAction: {
+                id: 'remind-later',
+              },
+            },
+            {
+              title: '📲 Share',
               pressAction: {
                 id: 'share',
               },
             },
-            {
-              title: 'Dismiss',
-              pressAction: {
-                id: 'dismiss',
-              },
-            },
           ],
           autoCancel: true,
+          sound: 'meme_notification',
         },
         ios: {
-          sound: 'default',
+          sound: 'meme.wav', // Make sure this file exists in your iOS project
           badgeCount: 1,
           categoryId: 'meme',
+          foregroundPresentationOptions: {
+            badge: true,
+            sound: true,
+            banner: true,
+            list: true,
+          },
+          attachments: [{
+            url: 'asset://meme_icon.png', // Make sure this image exists in your iOS project
+            thumbnailHidden: false,
+          }],
         },
       },
       {
         type: TriggerType.TIMESTAMP,
         timestamp: date.getTime(),
         repeats: true,
-        alarmManager: true,
+        alarmManager: {
+          allowWhileIdle: true,
+        },
       },
     );
 
-    console.log('Daily meme notification scheduled with ID:', notificationId);
     return notificationId;
   } catch (error) {
     console.error('Error scheduling meme notification:', error);
@@ -173,8 +212,15 @@ const scheduleDailyMemeNotification = async () => {
 // For testing: Send an immediate meme notification
 const sendImmediateMemeNotification = async () => {
   try {
-    // Get a random meme
+    // Get a random meme that hasn't been sent recently
     const memeText = await getRandomMeme();
+    
+    if (!memeText || memeText.trim() === '') {
+      console.warn('Empty meme text, skipping notification');
+      return null;
+    }
+    
+    const enhancedMemeText = enhanceMemeText(memeText);
 
     // Create a channel (required for Android)
     const channelId = await notifee.createChannel({
@@ -183,19 +229,24 @@ const sendImmediateMemeNotification = async () => {
       description: 'Daily study memes to brighten your day',
       importance: AndroidImportance.HIGH,
       vibration: true,
-      vibrationPattern: [300, 500],
+      vibrationPattern: [300, 500, 300, 500],
       lights: true,
       lightColor: AndroidColor.YELLOW,
+      sound: 'meme_notification', // Make sure this sound file exists
     });
+
+    // Generate a unique ID
+    const notificationId = `immediate-meme-${Date.now()}`;
 
     // Display the notification immediately
     await notifee.displayNotification({
-      id: 'immediate-meme',
-      title: 'Study Break ✍️',
-      body: memeText,
+      id: notificationId,
+      title: '✍️ Study Break Meme!',
+      body: enhancedMemeText,
       data: {
         type: 'meme',
         timestamp: Date.now(),
+        text: memeText,
       },
       android: {
         channelId,
@@ -206,37 +257,115 @@ const sendImmediateMemeNotification = async () => {
         },
         style: {
           type: AndroidStyle.BIGTEXT,
-          text: memeText,
+          text: enhancedMemeText,
         },
         showTimestamp: true,
+        color: '#FFD700', // Gold color
         actions: [
           {
-            title: 'Share',
+            title: '📲 Share',
             pressAction: {
               id: 'share',
             },
           },
           {
-            title: 'Dismiss',
+            title: '👍 Thanks!',
             pressAction: {
               id: 'dismiss',
             },
           },
         ],
         autoCancel: true,
+        sound: 'meme_notification',
       },
       ios: {
-        sound: 'default',
+        sound: 'meme.wav',
         badgeCount: 1,
         categoryId: 'meme',
+        foregroundPresentationOptions: {
+          badge: true,
+          sound: true,
+          banner: true,
+        },
+        attachments: [{
+          url: 'asset://meme_icon.png',
+          thumbnailHidden: false,
+        }],
       },
     });
 
-    console.log('Immediate meme notification sent');
-    return 'immediate-meme';
+    return notificationId;
   } catch (error) {
     console.error('Error sending immediate meme notification:', error);
     throw error;
+  }
+};
+
+// Schedule a "remind later" notification for 1 hour from now
+const scheduleRemindLaterMeme = async (originalMemeText) => {
+  try {
+    if (!originalMemeText || originalMemeText.trim() === '') {
+      console.warn('Empty meme text for remind later, skipping');
+      return null;
+    }
+    
+    // Create a channel
+    const channelId = await notifee.createChannel({
+      id: 'memes',
+      name: 'Daily Memes',
+      description: 'Daily study memes to brighten your day',
+      importance: AndroidImportance.HIGH,
+      sound: 'meme_notification',
+    });
+    
+    // Set trigger for 1 hour from now
+    const triggerTimestamp = Date.now() + (1 * 60 * 60 * 1000);
+    
+    // Generate a unique ID
+    const notificationId = `remind-meme-${Date.now()}`;
+    
+    // Create the notification
+    await notifee.createTriggerNotification(
+      {
+        id: notificationId,
+        title: '⏰ Your Reminder: Study Break!',
+        body: enhanceMemeText(originalMemeText),
+        data: {
+          type: 'meme',
+          timestamp: Date.now(),
+          text: originalMemeText,
+        },
+        android: {
+          channelId,
+          smallIcon: 'ic_notification',
+          importance: AndroidImportance.HIGH,
+          pressAction: {
+            id: 'default',
+          },
+          style: {
+            type: AndroidStyle.BIGTEXT,
+            text: enhanceMemeText(originalMemeText),
+          },
+          sound: 'meme_notification',
+        },
+        ios: {
+          sound: 'meme.wav',
+          badgeCount: 1,
+        },
+      },
+      {
+        type: TriggerType.TIMESTAMP,
+        timestamp: triggerTimestamp,
+        alarmManager: {
+          allowWhileIdle: true,
+        },
+      },
+    );
+    
+    return notificationId;
+  } catch (error) {
+    console.error('Error scheduling remind later meme:', error);
+    return null;
   }
 };
 
@@ -245,6 +374,17 @@ const initializeMemeNotifications = async () => {
   try {
     // Clear any existing daily meme notifications
     await notifee.cancelTriggerNotification('daily-meme');
+    
+    // List all scheduled notifications
+    const scheduledNotifications = await notifee.getTriggerNotifications();
+    const memeNotifications = scheduledNotifications.filter(
+      notification => notification.notification.data?.type === 'meme'
+    );
+    
+    // Cancel all existing meme notifications
+    for (const notification of memeNotifications) {
+      await notifee.cancelTriggerNotification(notification.notification.id);
+    }
     
     // This will schedule the daily meme notification
     await scheduleDailyMemeNotification();
@@ -262,10 +402,12 @@ const initializeMemeNotifications = async () => {
 // Handler for share action
 const handleShareMeme = async (memeText) => {
   try {
+    if (!memeText) return;
+    
     // This requires react-native-share to be installed
     import('react-native-share').then((Share) => {
       const shareOptions = {
-        message: memeText,
+        message: `Study Break Meme: ${memeText} #StudyBreak #StudentLife`,
         title: 'Share this Study Meme',
       };
       Share.default.open(shareOptions);
@@ -277,9 +419,22 @@ const handleShareMeme = async (memeText) => {
   }
 };
 
+// Handle notification actions
+const handleMemeNotificationAction = async (actionId, notification) => {
+  const memeText = notification?.data?.text;
+  
+  if (actionId === 'share' && memeText) {
+    await handleShareMeme(memeText);
+  } else if (actionId === 'remind-later' && memeText) {
+    await scheduleRemindLaterMeme(memeText);
+  }
+};
+
 export {
   scheduleDailyMemeNotification,
   sendImmediateMemeNotification,
   initializeMemeNotifications,
-  handleShareMeme
+  handleShareMeme,
+  handleMemeNotificationAction,
+  scheduleRemindLaterMeme
 };

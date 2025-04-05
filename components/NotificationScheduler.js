@@ -1,4 +1,3 @@
-// NotificationScheduler.js
 import notifee, { 
   AndroidStyle, 
   EventType, 
@@ -8,13 +7,24 @@ import notifee, {
   AndroidVisibility, 
   AndroidColor 
 } from '@notifee/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Schedule a notification every 3 hours
+// Storage key for tracking sent notifications
+const SENT_NOTIFICATIONS_KEY = 'sent_news_notifications';
+
+// Schedule a notification
 const scheduleNotification = async (newsItem) => {
   try {
-    if (!newsItem) {
-      console.warn('No news item provided for notification');
-      return;
+    // Validate news item
+    if (!newsItem || !newsItem.title || !newsItem.summary) {
+      console.warn('Invalid news item - missing title or summary');
+      return null;
+    }
+    
+    // Check if this exact notification has been sent before
+    const sentNotificationId = await checkDuplicateNotification(newsItem);
+    if (sentNotificationId) {
+      return sentNotificationId;
     }
     
     // Create a channel (required for Android)
@@ -25,9 +35,10 @@ const scheduleNotification = async (newsItem) => {
       importance: AndroidImportance.HIGH,
       visibility: AndroidVisibility.PUBLIC,
       vibration: true,
-      vibrationPattern: [300, 500],
+      vibrationPattern: [300, 500, 300, 500],
       lights: true,
       lightColor: AndroidColor.BLUE,
+      sound: 'notification_sound', // Make sure this sound file exists in android/app/src/main/res/raw/
     });
     
     // For Android, make sure we have a valid icon
@@ -39,68 +50,84 @@ const scheduleNotification = async (newsItem) => {
       ? newsItem.imageUrl 
       : null;
     
-    // Calculate the next trigger time (immediate + repeating)
-    const now = new Date();
-    const triggerDate = new Date(now.getTime() + 10000); // Start in 10 seconds for testing
+    // Generate a unique ID for this notification based on content
+    const notificationId = `news-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     
+    // Calculate the next trigger time (3 hours from now)
+    const triggerTimestamp = Date.now() + (3 * 60 * 60 * 1000);
+
     // Create the notification
-    const notificationId = await notifee.createTriggerNotification(
+    await notifee.createTriggerNotification(
       {
-        id: 'news-notification',
-        title: newsItem.title || 'News Update',
-        body: newsItem.summary || 'Check out the latest news',
+        id: notificationId,
+        title: `📰 ${newsItem.title}`,
+        subtitle: 'Latest Update',
+        body: newsItem.summary,
         data: { 
           ...newsItem,
           type: 'news',
           timestamp: Date.now(),
+          notificationId,
         },
         android: {
           channelId,
-          smallIcon: 'ic_notification', // Make sure this icon exists in your project
+          smallIcon: 'ic_notification',
           largeIcon: largeIcon,
           color: '#4655F5',
           style: picture ? {
             type: AndroidStyle.BIGPICTURE,
             picture: picture,
-          } : undefined,
+          } : {
+            type: AndroidStyle.BIGTEXT,
+            text: newsItem.summary,
+          },
           pressAction: {
             id: 'default',
           },
           showTimestamp: true,
           actions: [
             {
-              title: 'Read More',
+              title: '📖 Read More',
               pressAction: {
                 id: 'read-more',
               },
             },
             {
-              title: 'Dismiss',
+              title: '✓ Mark as Read',
               pressAction: {
                 id: 'dismiss',
               },
             },
           ],
           autoCancel: true,
+          sound: 'notification_sound',
         },
         ios: {
           attachments: newsItem.imageUrl ? [{ url: newsItem.imageUrl }] : [],
-          sound: 'default',
+          sound: 'notification.wav', // Make sure this file exists in your iOS project
           badgeCount: 1,
           categoryId: 'news',
+          foregroundPresentationOptions: {
+            badge: true,
+            sound: true,
+            banner: true,
+            list: true,
+          },
         },
       },
       {
-        type: TriggerType.INTERVAL,
-        timeUnit: 'hours',
-        interval: 3,
-      },
+        type: TriggerType.TIMESTAMP,
+        timestamp: triggerTimestamp,
+        repeatFrequency: RepeatFrequency.HOURLY, // This will repeat every hour
+        alarmManager: {
+          allowWhileIdle: true,
+        },
+      }
     );
     
-    // Also display an immediate notification for testing
+    // Save this notification to prevent duplicates
+    await saveNotificationRecord(newsItem, notificationId);
     
-    
-    console.log('Notification scheduled with ID:', notificationId);
     return notificationId;
   } catch (error) {
     console.error('Error scheduling news notification:', error);
@@ -108,11 +135,57 @@ const scheduleNotification = async (newsItem) => {
   }
 };
 
+// Save notification record to prevent duplicates
+const saveNotificationRecord = async (newsItem, notificationId) => {
+  try {
+    // Get existing notification records
+    const existingRecordsJson = await AsyncStorage.getItem(SENT_NOTIFICATIONS_KEY);
+    const existingRecords = existingRecordsJson ? JSON.parse(existingRecordsJson) : [];
+    
+    // Add new record
+    const newRecord = {
+      id: notificationId,
+      title: newsItem.title,
+      summary: newsItem.summary,
+      timestamp: Date.now(),
+    };
+    
+    // Keep only the last 20 notifications to prevent storage bloat
+    const updatedRecords = [newRecord, ...existingRecords].slice(0, 20);
+    
+    // Save updated records
+    await AsyncStorage.setItem(SENT_NOTIFICATIONS_KEY, JSON.stringify(updatedRecords));
+  } catch (error) {
+    console.error('Error saving notification record:', error);
+  }
+};
+
+// Check if a notification with the same content has been sent before
+const checkDuplicateNotification = async (newsItem) => {
+  if (!newsItem || !newsItem.title || !newsItem.summary) return false;
+  
+  try {
+    const existingRecordsJson = await AsyncStorage.getItem(SENT_NOTIFICATIONS_KEY);
+    if (!existingRecordsJson) return false;
+    
+    const existingRecords = JSON.parse(existingRecordsJson);
+    
+    // Check for duplicates based on title and summary
+    const duplicate = existingRecords.find(
+      record => record.title === newsItem.title && record.summary === newsItem.summary
+    );
+    
+    return duplicate ? duplicate.id : false;
+  } catch (error) {
+    console.error('Error checking for duplicate notifications:', error);
+    return false;
+  }
+};
+
 // Cancel all scheduled notifications
 const cancelAllNotifications = async () => {
   try {
     await notifee.cancelAllNotifications();
-    console.log('All notifications canceled');
   } catch (error) {
     console.error('Error canceling notifications:', error);
     throw error;
@@ -123,7 +196,6 @@ const cancelAllNotifications = async () => {
 const listScheduledNotifications = async () => {
   try {
     const notifications = await notifee.getTriggerNotifications();
-    console.log('Scheduled notifications:', notifications);
     return notifications;
   } catch (error) {
     console.error('Error listing scheduled notifications:', error);
@@ -134,23 +206,18 @@ const listScheduledNotifications = async () => {
 // Set up notification listeners with improved handling
 const setupNotificationListeners = (onNotificationPress) => {
   return notifee.onForegroundEvent(({ type, detail }) => {
-    console.log('Foreground event received:', type, detail);
     
     switch (type) {
       case EventType.DISMISSED:
-        console.log('User dismissed notification', detail.notification);
         break;
       case EventType.PRESS:
-        console.log('User pressed notification', detail.notification);
         if (onNotificationPress && typeof onNotificationPress === 'function') {
           onNotificationPress(detail.notification);
         }
         break;
       case EventType.TRIGGER:
-        console.log('Notification triggered', detail.notification);
         break;
       case EventType.ACTION_PRESS:
-        console.log('User pressed action', detail.pressAction);
         // Handle specific action buttons
         if (detail.pressAction.id === 'read-more' && onNotificationPress) {
           onNotificationPress(detail.notification);
@@ -163,12 +230,29 @@ const setupNotificationListeners = (onNotificationPress) => {
 // Update notification with new content
 const updateNewsNotification = async (newsItem) => {
   try {
-    // Cancel the existing notification
-    await notifee.cancelTriggerNotification('news-notification');
+    // Validate news item
+    if (!newsItem || !newsItem.title || !newsItem.summary) {
+      console.warn('Invalid news item for update - missing title or summary');
+      return null;
+    }
+    
+    // Get all scheduled notifications
+    const scheduledNotifications = await notifee.getTriggerNotifications();
+    
+    // Find news notifications
+    const newsNotifications = scheduledNotifications.filter(
+      notification => notification.notification.data?.type === 'news'
+    );
+    
+    // Cancel all existing news notifications
+    for (const notification of newsNotifications) {
+      await notifee.cancelTriggerNotification(notification.notification.id);
+    }
     
     // Schedule a new one with updated content
-    await scheduleNotification(newsItem);
-    console.log('News notification updated');
+    const notificationId = await scheduleNotification(newsItem);
+    
+    return notificationId;
   } catch (error) {
     console.error('Error updating news notification:', error);
     throw error;
@@ -178,17 +262,14 @@ const updateNewsNotification = async (newsItem) => {
 // Set up background handler (should be called in index.js)
 const registerBackgroundHandler = (onNotificationPress) => {
   return notifee.onBackgroundEvent(async ({ type, detail }) => {
-    console.log('Background event received:', type, detail);
     
     if (type === EventType.PRESS) {
-      console.log('User pressed notification in background', detail.notification);
       if (onNotificationPress && typeof onNotificationPress === 'function') {
         onNotificationPress(detail.notification);
       }
     }
     
     if (type === EventType.ACTION_PRESS) {
-      console.log('User pressed action in background', detail.pressAction);
       if (detail.pressAction.id === 'read-more' && onNotificationPress) {
         onNotificationPress(detail.notification);
       }
@@ -205,11 +286,12 @@ const sendTestNotification = async () => {
       id: 'test',
       name: 'Test Channel',
       importance: AndroidImportance.HIGH,
+      sound: 'notification_sound',
     });
     
     await notifee.displayNotification({
       id: 'test',
-      title: 'Test Notification',
+      title: '🔔 Test Notification',
       body: 'This is a test notification to verify notifications are working',
       android: {
         channelId,
@@ -218,18 +300,32 @@ const sendTestNotification = async () => {
         pressAction: {
           id: 'default',
         },
+        sound: 'notification_sound',
       },
       ios: {
-        sound: 'default',
+        sound: 'notification.wav',
+        foregroundPresentationOptions: {
+          badge: true,
+          sound: true,
+          banner: true,
+        },
       },
     });
     
-    console.log('Test notification sent');
     return true;
   } catch (error) {
     console.error('Error sending test notification:', error);
     return false;
   }
+};
+
+// Validate news item before scheduling notification
+const validateNewsItem = (newsItem) => {
+  if (!newsItem) return false;
+  if (!newsItem.title || newsItem.title.trim() === '') return false;
+  if (!newsItem.summary || newsItem.summary.trim() === '') return false;
+  
+  return true;
 };
 
 export {
@@ -240,4 +336,5 @@ export {
   setupNotificationListeners,
   registerBackgroundHandler,
   sendTestNotification,
+  validateNewsItem,
 };

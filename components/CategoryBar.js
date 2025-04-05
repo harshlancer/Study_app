@@ -9,13 +9,11 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import {
-  InterstitialAd,
-  AdEventType,
-  TestIds,
-} from 'react-native-google-mobile-ads';
+import { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 
 const { width } = Dimensions.get('window');
+const INTERSTITIAL_DELAY = 1 * 60 * 1000; // 1 minute in milliseconds
+const NAVIGATION_THRESHOLD = 3; // Show ad every 3rd navigation
 
 const CATEGORIES = [
   'National',
@@ -28,12 +26,12 @@ const CATEGORIES = [
 
 // Define category colors to match the home screen
 const CATEGORY_COLORS = {
-  'National': '#5D5DFB',
-  'World': '#4CAF50',
+  National: '#5D5DFB',
+  World: '#4CAF50',
   'National MCQs': '#9C27B0',
   'World MCQs': '#FF5722',
-  'WeeklyCurrentAffairs': '#2196F3',
-  'Bookmarks': '#E91E63',
+  WeeklyCurrentAffairs: '#2196F3',
+  Bookmarks: '#E91E63',
 };
 
 const CategoryBar = () => {
@@ -42,40 +40,36 @@ const CategoryBar = () => {
   const scrollViewRef = useRef(null);
   const categoryPositions = useRef({}).current;
 
-  // State for selected category and navigation counter
+  // State for selected category, ad timing, and navigation count
   const [selectedCategory, setSelectedCategory] = useState(() => {
     const currentRouteName = route.name;
     return CATEGORIES.includes(currentRouteName) ? currentRouteName : 'National';
   });
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
+  const [lastAdShown, setLastAdShown] = useState(0); // Track last ad display time
   const [navigationCount, setNavigationCount] = useState(0); // Track navigation attempts
 
   // Create interstitial ad ref with Families compliance
   const interstitialRef = useRef(
     InterstitialAd.createForAdRequest('ca-app-pub-3382805190620235/5559102956', {
       requestNonPersonalizedAdsOnly: true,
-      tagForChildDirectedTreatment: true, // Ensure family-friendly ads
-      maxAdContentRating: 'G', // Restrict to General Audiences
+      tagForChildDirectedTreatment: true,
+      maxAdContentRating: 'G',
       keywords: ['current affairs', 'news', 'education'],
     })
   ).current;
 
   // Load interstitial ad when component mounts
   useEffect(() => {
-    const unsubscribeLoaded = interstitialRef.addAdEventListener(
-      AdEventType.LOADED,
-      () => {
-        setInterstitialLoaded(true);
-      }
-    );
+    const unsubscribeLoaded = interstitialRef.addAdEventListener(AdEventType.LOADED, () => {
+      setInterstitialLoaded(true);
+    });
 
-    const unsubscribeClosed = interstitialRef.addAdEventListener(
-      AdEventType.CLOSED,
-      () => {
-        setInterstitialLoaded(false);
-        interstitialRef.load(); // Reload after closing
-      }
-    );
+    const unsubscribeClosed = interstitialRef.addAdEventListener(AdEventType.CLOSED, () => {
+      setInterstitialLoaded(false);
+      setLastAdShown(Date.now());
+      interstitialRef.load();
+    });
 
     interstitialRef.load();
 
@@ -103,31 +97,53 @@ const CategoryBar = () => {
     }
   };
 
-  // Handle navigation with ad logic (show ad every 3rd navigation)
+  const showInterstitialIfReady = (callback) => {
+    const now = Date.now();
+    const timeElapsed = now - lastAdShown >= INTERSTITIAL_DELAY;
+    const shouldShowAd = navigationCount % NAVIGATION_THRESHOLD === 0;
+
+    if (interstitialLoaded && timeElapsed && shouldShowAd) {
+      interstitialRef.show();
+      const unsubscribeClosed = interstitialRef.addAdEventListener(AdEventType.CLOSED, () => {
+        callback();
+        unsubscribeClosed();
+      });
+    } else {
+      callback();
+    }
+  };
+
+  // Handle navigation with ad logic
   const handleCategoryPress = useCallback(
     (category) => {
-      if (!CATEGORIES.includes(category) || category === selectedCategory) return; // Prevent re-navigation to same category
-
-      setSelectedCategory(category);
-      setNavigationCount((prevCount) => prevCount + 1); // Increment navigation counter
-
-      const shouldShowAd = (navigationCount + 1) % 3 === 0; // Show ad every 3rd navigation
-
-      if (interstitialLoaded && shouldShowAd) {
+      if (!CATEGORIES.includes(category) || category === selectedCategory) return;
+  
+      const nextCount = navigationCount + 1;
+      const shouldShowAd = nextCount % NAVIGATION_THRESHOLD === 0;
+  
+      const showAdThenNavigate = () => {
+        setSelectedCategory(category);
+        setNavigationCount(nextCount);
+        navigation.replace(category);
+      };
+  
+      const now = Date.now();
+      const timeElapsed = now - lastAdShown >= INTERSTITIAL_DELAY;
+  
+      if (interstitialLoaded && shouldShowAd && timeElapsed) {
         interstitialRef.show();
-        const unsubscribeClosed = interstitialRef.addAdEventListener(
-          AdEventType.CLOSED,
-          () => {
-            navigation.replace(category);
-            unsubscribeClosed();
-          }
-        );
+        const unsubscribeClosed = interstitialRef.addAdEventListener(AdEventType.CLOSED, () => {
+          setLastAdShown(Date.now());
+          showAdThenNavigate();
+          unsubscribeClosed();
+        });
       } else {
-        navigation.replace(category); // Navigate immediately if no ad
+        showAdThenNavigate();
       }
     },
-    [navigation, interstitialLoaded, navigationCount, selectedCategory]
+    [navigation, interstitialLoaded, selectedCategory, lastAdShown, navigationCount]
   );
+  
 
   // Measure and store category position when mounted
   const measurePosition = (category, event) => {
@@ -137,11 +153,8 @@ const CategoryBar = () => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#121212', '#1E1E1E']}
-        style={styles.backgroundGradient}
-      />
-      
+      <LinearGradient colors={['#121212', '#1E1E1E']} style={styles.backgroundGradient} />
+
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -150,7 +163,7 @@ const CategoryBar = () => {
         {CATEGORIES.map((category) => {
           const isSelected = selectedCategory === category;
           const categoryColor = CATEGORY_COLORS[category] || '#FF5722';
-          
+
           return (
             <TouchableOpacity
               key={category}
@@ -177,7 +190,7 @@ const CategoryBar = () => {
           );
         })}
       </ScrollView>
-      
+
       {/* Add a subtle shadow at the edges to indicate scrollability */}
       <LinearGradient
         colors={['rgba(18,18,18,0.9)', 'rgba(18,18,18,0)']}

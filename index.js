@@ -11,12 +11,10 @@ import { registerBackgroundHandler } from './components/NotificationScheduler';
 
 // Pass a callback function to handle notification press in the background
 registerBackgroundHandler((notification) => {
-  console.log('Background notification handled from index.js:', notification);
   // Can't navigate from here directly, but can store info for when app opens
 });
 
 notifee.onBackgroundEvent(async ({ type, detail }) => {
-  console.log('Background event received:', type, detail);
   return Promise.resolve();
 });
 

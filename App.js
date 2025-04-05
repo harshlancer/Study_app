@@ -4,17 +4,19 @@ import {Provider} from 'react-redux';
 import store from './store/store.js';
 import AppNavigator from './navigation/AppNavigator'; // Changed to default import
 import {Platform, Linking, Alert} from 'react-native';
-import notifee, {AuthorizationStatus} from '@notifee/react-native';
+import notifee, {AuthorizationStatus, EventType} from '@notifee/react-native';
 import {
   scheduleNotification,
   setupNotificationListeners,
   listScheduledNotifications,
   registerBackgroundHandler,
   sendTestNotification,
+  validateNewsItem,
 } from './components/NotificationScheduler.js';
 import {
   initializeMemeNotifications,
   sendImmediateMemeNotification,
+  handleMemeNotificationAction,
 } from './components/MemeScheduler.js';
 import HTMLParser from 'react-native-html-parser';
 
@@ -24,6 +26,12 @@ const fetchInitialNews = async () => {
     const response = await fetch(
       'https://www.jagranjosh.com/current-affairs/national-india-1283851987-catlistshow-1',
     );
+    
+    if (!response.ok) {
+      console.warn(`Failed to fetch news: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    
     const htmlText = await response.text();
 
     if (!htmlText || htmlText.trim() === '') {
@@ -56,9 +64,17 @@ const fetchInitialNews = async () => {
       'Check out the latest news';
     const imageUrl =
       article.getElementsByTagName('img')[0]?.getAttribute('src') || null;
+    
+    // Get link if available
+    const link = titleElement?.getAttribute('href') || 'https://www.jagranjosh.com';
 
-    console.log('Fetched news:', {title, summary, imageUrl});
-    return {title, summary, imageUrl};
+    return {
+      title, 
+      summary, 
+      imageUrl, 
+      link,
+      timestamp: Date.now(),
+    };
   } catch (error) {
     console.error('Error fetching initial news:', error);
     return null;
@@ -69,7 +85,6 @@ const fetchInitialNews = async () => {
 const handleDeepLink = (url, navigationRef) => {
   if (!url || !navigationRef.current) return;
 
-  console.log('Handling deep link:', url);
   const route = url.replace(/.*?:\/\//g, '');
   const [screen, params] = route.split('/');
 
@@ -82,15 +97,49 @@ const handleDeepLink = (url, navigationRef) => {
   }
 };
 
+// Handle notification press
+const handleNotificationPress = (notification, navigationRef) => {
+  try {
+    if (!notification || !notification.data) {
+      console.warn('Invalid notification data in handleNotificationPress');
+      return;
+    }
+
+    if (!navigationRef.current) {
+      console.warn('Navigation ref not available');
+      
+      // Fallback for news links when navigation isn't available
+      if (notification.data.type === 'news' && notification.data.link) {
+        Linking.openURL(notification.data.link).catch((err) => {
+          console.error('Error opening URL:', err);
+        });
+      }
+      return;
+    }
+
+    const notificationType = notification?.data?.type;
+
+    if (notificationType === 'news') {
+      navigationRef.current.navigate('NewsScreen', {
+        newsItem: notification.data,
+      });
+    } else if (notificationType === 'meme') {
+      navigationRef.current.navigate('CurrentAffairs');
+    }
+  } catch (error) {
+    console.error('Error handling notification press:', error);
+  }
+};
+
 const App = () => {
   const navigationRef = useRef(null);
+  const appInitialized = useRef(false);
 
   useEffect(() => {
     const initializeNotifications = async () => {
       try {
         // Request permission
         const settings = await notifee.requestPermission();
-        console.log('Notification settings:', settings);
 
         // Check if we have permission
         if (settings.authorizationStatus < AuthorizationStatus.AUTHORIZED) {
@@ -117,16 +166,15 @@ const App = () => {
         const newsItem = await fetchInitialNews();
         let newsScheduled = false;
 
-        if (newsItem) {
+        if (newsItem && validateNewsItem(newsItem)) {
           try {
             await scheduleNotification(newsItem);
             newsScheduled = true;
-            console.log('News notification scheduled successfully');
           } catch (error) {
             console.error('Failed to schedule news notifications:', error);
           }
         } else {
-          console.warn('No news item fetched, skipping news notification');
+          console.warn('No valid news item fetched, skipping news notification');
         }
 
         // Initialize meme notifications
@@ -162,35 +210,37 @@ const App = () => {
       if (url) handleDeepLink(url, navigationRef);
     });
 
-    // Initialize notifications
-    initializeNotifications();
+    // Initialize notifications if not already initialized
+    if (!appInitialized.current) {
+      appInitialized.current = true;
+      initializeNotifications();
+    }
+
+    // Set up notification event handler for foreground events
+    const notificationEventUnsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
+      switch (type) {
+        case EventType.PRESS:
+          handleNotificationPress(detail.notification, navigationRef);
+          break;
+        case EventType.ACTION_PRESS:
+          const { notification, pressAction } = detail;
+          
+          // Handle meme notification actions
+          if (notification.data?.type === 'meme') {
+            handleMemeNotificationAction(pressAction.id, notification);
+          }
+          break;
+      }
+    });
 
     // Clean up
     return () => {
       if (unsubscribeForeground) unsubscribeForeground();
       if (unsubscribeBackground) unsubscribeBackground();
       if (linkingSubscription) linkingSubscription.remove();
+      if (notificationEventUnsubscribe) notificationEventUnsubscribe();
     };
   }, []);
-
-  // Handle notification press
-  const handleNotificationPress = (notification, navigationRef) => {
-    if (!navigationRef.current) {
-      console.warn('Navigation ref not available');
-      return;
-    }
-
-    console.log('Handling notification press:', notification);
-    const notificationType = notification?.data?.type;
-
-    if (notificationType === 'news') {
-      navigationRef.current.navigate('NewsScreen', {
-        newsItem: notification.data,
-      });
-    } else if (notificationType === 'meme') {
-      navigationRef.current.navigate('CurrentAffairs');
-    }
-  };
 
   return (
     <Provider store={store}>

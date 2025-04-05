@@ -24,12 +24,12 @@ import {
   NativeMediaAspectRatio,
   NativeAssetType,
   NativeAdChoicesPlacement,
-  TestIds
 } from 'react-native-google-mobile-ads';
 import NativeAdCard from './NativeAdCard';
 
 const {width} = Dimensions.get('window');
 const QUESTIONS_PER_PAGE = 25;
+const AD_UNIT_ID = 'ca-app-pub-3382805190620235/9520816115'; // REPLACE WITH YOUR REAL AD UNIT ID
 
 const MCQScreen = () => {
   const [allMcqs, setAllMcqs] = useState([]);
@@ -47,20 +47,19 @@ const MCQScreen = () => {
       setLoading(true);
       const data = await fetchMCQs();
       setAllMcqs(data);
-      
-      // Display first batch of questions
       setDisplayedMcqs(data.slice(0, QUESTIONS_PER_PAGE));
       setLoading(false);
     };
     loadData();
 
-    // Load native ad
+    // Load native ad with real ad unit ID
     const loadAd = async () => {
       try {
-        const ad = await NativeAd.createForAdRequest(TestIds.NATIVE, {
+        const ad = await NativeAd.createForAdRequest(AD_UNIT_ID, {
           aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
           adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
           startVideoMuted: true,
+          requestNonPersonalizedAdsOnly: true, // For GDPR compliance
         });
         setNativeAd(ad);
       } catch (error) {
@@ -201,23 +200,16 @@ const MCQScreen = () => {
     if (displayedMcqs.length >= allMcqs.length) return;
     
     setLoadingMore(true);
-    
-    // Calculate next set of questions
     const nextPage = page + 1;
     const startIndex = (nextPage - 1) * QUESTIONS_PER_PAGE;
     const endIndex = nextPage * QUESTIONS_PER_PAGE;
-    
-    // Get more questions from the full set
     const newQuestions = [...displayedMcqs, ...allMcqs.slice(startIndex, endIndex)];
-    
-    // Update state
     setDisplayedMcqs(newQuestions);
     setPage(nextPage);
     setLoadingMore(false);
   };
 
   const handleSelectOption = (questionIndex, optionIndex) => {
-    // If already answered, don't allow changes
     if (selectedAnswers[questionIndex] !== undefined) return;
     
     setSelectedAnswers(prev => ({
@@ -225,12 +217,9 @@ const MCQScreen = () => {
       [questionIndex]: optionIndex,
     }));
     
-    // Check if answer is correct and update score
     const mcq = displayedMcqs[questionIndex];
     const correctLetterMatch = mcq.correctAnswer.match(/^([A-D])\s/);
     const correctLetter = correctLetterMatch ? correctLetterMatch[1] : null;
-    
-    // If we have a letter match, compare directly with the option label
     const isCorrect = correctLetter 
       ? correctLetter === String.fromCharCode(65 + optionIndex)
       : isCorrectAnswer(mcq, optionIndex);
@@ -248,7 +237,6 @@ const MCQScreen = () => {
       }));
     }
     
-    // Auto show explanation after selection
     setTimeout(() => {
       setShowExplanations(prev => ({
         ...prev,
@@ -265,34 +253,27 @@ const MCQScreen = () => {
   };
 
   const getOptionLabel = index => {
-    return String.fromCharCode(65 + index); // A, B, C, D...
+    return String.fromCharCode(65 + index);
   };
 
   const isCorrectAnswer = (mcq, selectedOptionIndex) => {
     if (selectedOptionIndex === undefined) return false;
-
-    // Try to match by letter in the correct answer (e.g., "A [Option text]")
     const correctLetterMatch = mcq.correctAnswer.match(/^([A-D])\s/);
     if (correctLetterMatch) {
       const correctLetter = correctLetterMatch[1];
       return correctLetter === String.fromCharCode(65 + selectedOptionIndex);
     }
-
-    // Otherwise try to match by option content
     return mcq.correctAnswer.toLowerCase().includes(
       mcq.options[selectedOptionIndex].toLowerCase()
     );
   };
 
   const getCorrectOptionIndex = (mcq) => {
-    // Try to match by letter in the correct answer (e.g., "A [Option text]")
     const correctLetterMatch = mcq.correctAnswer.match(/^([A-D])\s/);
     if (correctLetterMatch) {
       const correctLetter = correctLetterMatch[1];
-      return correctLetter.charCodeAt(0) - 65; // Convert A->0, B->1, etc.
+      return correctLetter.charCodeAt(0) - 65;
     }
-
-    // Find which option matches the correct answer text
     return mcq.options.findIndex(option =>
       mcq.correctAnswer.toLowerCase().includes(option.toLowerCase())
     );
@@ -308,7 +289,7 @@ const MCQScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#6A1B9A" barStyle="light-content" />
       <ImageBackground
-        source={require('./image.png')} // Add this image to your assets folder
+        source={require('./image.png')}
         style={styles.backgroundImage}>
         <LinearGradient
           colors={['rgba(106, 27, 154, 0.9)', 'rgba(40, 53, 147, 0.95)']}
@@ -367,7 +348,6 @@ const MCQScreen = () => {
               </View>
             )}
 
-            {/* Add some bottom padding for better UX */}
             <View style={{height: 40}} />
           </ScrollView>
         </LinearGradient>

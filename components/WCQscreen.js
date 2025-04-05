@@ -23,11 +23,11 @@ import {
   NativeMediaAspectRatio,
   NativeAssetType,
   NativeAdChoicesPlacement,
-  TestIds
 } from 'react-native-google-mobile-ads';
 import NativeAdCard from './NativeAdCard';
 
 const {width} = Dimensions.get('window');
+const AD_UNIT_ID = 'ca-app-pub-3382805190620235/9520816115'; // REPLACE WITH YOUR REAL AD UNIT ID
 
 const WCQscreen = () => {
   const [mcqs, setMcqs] = useState([]);
@@ -46,13 +46,14 @@ const WCQscreen = () => {
     };
     loadData();
 
-    // Load native ad
+    // Load native ad with real ad unit ID
     const loadAd = async () => {
       try {
-        const ad = await NativeAd.createForAdRequest(TestIds.NATIVE, {
+        const ad = await NativeAd.createForAdRequest(AD_UNIT_ID, {
           aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
           adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
           startVideoMuted: true,
+          requestNonPersonalizedAdsOnly: true, // For GDPR compliance
         });
         setNativeAd(ad);
       } catch (error) {
@@ -190,7 +191,6 @@ const WCQscreen = () => {
   };
 
   const handleSelectOption = (questionIndex, optionIndex) => {
-    // If already answered, don't allow changes
     if (selectedAnswers[questionIndex] !== undefined) return;
     
     setSelectedAnswers(prev => ({
@@ -198,7 +198,6 @@ const WCQscreen = () => {
       [questionIndex]: optionIndex,
     }));
     
-    // Check if answer is correct and update score
     const mcq = mcqs[questionIndex];
     const isCorrect = isCorrectAnswer(mcq, optionIndex);
     
@@ -215,7 +214,6 @@ const WCQscreen = () => {
       }));
     }
     
-    // Auto show explanation after selection
     setTimeout(() => {
       setShowExplanations(prev => ({
         ...prev,
@@ -232,22 +230,15 @@ const WCQscreen = () => {
   };
 
   const getOptionLabel = index => {
-    return String.fromCharCode(65 + index); // A, B, C, D...
+    return String.fromCharCode(65 + index);
   };
 
   const isCorrectAnswer = (mcq, selectedOptionIndex) => {
     if (selectedOptionIndex === undefined) return false;
-
-    // Find which option matches the correct answer text
-    const correctOptionIndex = mcq.options.findIndex(option =>
-      option.toLowerCase().includes(mcq.correctAnswer.toLowerCase()),
-    );
-
-    return selectedOptionIndex === correctOptionIndex;
+    return selectedOptionIndex === getCorrectOptionIndex(mcq);
   };
 
   const getCorrectOptionIndex = (mcq) => {
-    // Find which option matches the correct answer text
     return mcq.options.findIndex(option =>
       mcq.correctAnswer.toLowerCase().includes(option.toLowerCase())
     );
@@ -261,7 +252,7 @@ const WCQscreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#6A1B9A" barStyle="light-content" />
       <ImageBackground
-        source={require('./image.png')} // Add this image to your assets folder
+        source={require('./image.png')}
         style={styles.backgroundImage}>
         <LinearGradient
           colors={['rgba(106, 27, 154, 0.9)', 'rgba(40, 53, 147, 0.95)']}
@@ -293,7 +284,6 @@ const WCQscreen = () => {
               </View>
             ))}
 
-            {/* Add some bottom padding for better UX */}
             <View style={{height: 40}} />
           </ScrollView>
         </LinearGradient>
