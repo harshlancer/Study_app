@@ -15,6 +15,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import fetchMCQs from './fetchwcq';
 import LoadingMCQ from './LoadingMCQ';
+import { updateQuestionStats } from './ProgressTracker';
+
 import {
   NativeAd,
   NativeAdView,
@@ -198,9 +200,11 @@ const WCQscreen = () => {
       [questionIndex]: optionIndex,
     }));
     
-    const mcq = mcqs[questionIndex];
+    const mcq = displayedMcqs[questionIndex];
     const isCorrect = isCorrectAnswer(mcq, optionIndex);
     
+    // Update question stats in progress tracker
+    updateQuestionStats(isCorrect);
     if (isCorrect) {
       setScore(prev => ({
         ...prev,
@@ -221,7 +225,6 @@ const WCQscreen = () => {
       }));
     }, 500);
   };
-
   const toggleExplanation = questionIndex => {
     setShowExplanations(prev => ({
       ...prev,

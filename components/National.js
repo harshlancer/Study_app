@@ -22,7 +22,7 @@ import {
   NativeAdChoicesPlacement,
 } from 'react-native-google-mobile-ads';
 import NativeAdCard from './NativeAdCard';
-
+import { fetchNationalNews } from '../services/newsService'; // Adjust the import path as needed
 const AD_UNIT_IDS = [
   "ca-app-pub-3382805190620235/3239205147", // First ad unit
   "ca-app-pub-3382805190620235/4943733703", // Second ad unit

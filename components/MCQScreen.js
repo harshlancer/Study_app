@@ -26,6 +26,7 @@ import {
   NativeAdChoicesPlacement,
 } from 'react-native-google-mobile-ads';
 import NativeAdCard from './NativeAdCard';
+import { updateQuestionStats } from '../services/statsTracker';
 
 const {width} = Dimensions.get('window');
 const QUESTIONS_PER_PAGE = 25;
@@ -218,11 +219,9 @@ const MCQScreen = () => {
     }));
     
     const mcq = displayedMcqs[questionIndex];
-    const correctLetterMatch = mcq.correctAnswer.match(/^([A-D])\s/);
-    const correctLetter = correctLetterMatch ? correctLetterMatch[1] : null;
-    const isCorrect = correctLetter 
-      ? correctLetter === String.fromCharCode(65 + optionIndex)
-      : isCorrectAnswer(mcq, optionIndex);
+    const isCorrect = isCorrectAnswer(mcq, optionIndex);    
+    // Update question stats in progress tracker
+    updateQuestionStats();
     
     if (isCorrect) {
       setScore(prev => ({
