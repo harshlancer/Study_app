@@ -15,8 +15,6 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import fetchMCQs from './fetchwcq';
 import LoadingMCQ from './LoadingMCQ';
-import { updateQuestionStats } from './ProgressTracker';
-
 import {
   NativeAd,
   NativeAdView,
@@ -27,9 +25,10 @@ import {
   NativeAdChoicesPlacement,
 } from 'react-native-google-mobile-ads';
 import NativeAdCard from './NativeAdCard';
+import { updateQuestionStats } from '../services/statsTracker';
 
 const {width} = Dimensions.get('window');
-const AD_UNIT_ID = 'ca-app-pub-3382805190620235/9520816115'; // REPLACE WITH YOUR REAL AD UNIT ID
+const AD_UNIT_ID = 'ca-app-pub-3382805190620235/9520816115';
 
 const WCQscreen = () => {
   const [mcqs, setMcqs] = useState([]);
@@ -48,14 +47,13 @@ const WCQscreen = () => {
     };
     loadData();
 
-    // Load native ad with real ad unit ID
     const loadAd = async () => {
       try {
         const ad = await NativeAd.createForAdRequest(AD_UNIT_ID, {
           aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
           adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
           startVideoMuted: true,
-          requestNonPersonalizedAdsOnly: true, // For GDPR compliance
+          requestNonPersonalizedAdsOnly: true,
         });
         setNativeAd(ad);
       } catch (error) {
@@ -179,7 +177,6 @@ const WCQscreen = () => {
   };
 
   const renderItem = ({item, index}) => {
-    // Show ad after every 3 questions, but not before the first question
     if (index > 0 && index % 3 === 0 && nativeAd) {
       return (
         <>
@@ -200,11 +197,12 @@ const WCQscreen = () => {
       [questionIndex]: optionIndex,
     }));
     
-    const mcq = displayedMcqs[questionIndex];
+    const mcq = mcqs[questionIndex];
     const isCorrect = isCorrectAnswer(mcq, optionIndex);
     
     // Update question stats in progress tracker
-    updateQuestionStats(isCorrect);
+    updateQuestionStats();
+    
     if (isCorrect) {
       setScore(prev => ({
         ...prev,
@@ -225,6 +223,7 @@ const WCQscreen = () => {
       }));
     }, 500);
   };
+
   const toggleExplanation = questionIndex => {
     setShowExplanations(prev => ({
       ...prev,

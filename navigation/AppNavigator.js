@@ -16,7 +16,7 @@ import PDFViewerScreen from '../screens/PDFViewerScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import ContactScreen from '../screens/ContactScreen';
 import AboutUsScreen from '../screens/AboutUsScreen';
-
+import AchievementsScreen from '../screens/AchievementsScreen';
 const Stack = createStackNavigator();
 
 // Wrap the component with forwardRef to accept and pass the ref
@@ -140,8 +140,10 @@ const AppNavigator = forwardRef((props, ref) => {
         </Stack.Screen>
         <Stack.Screen 
           name="Bookmarks" 
+          
           component={Bookmarks} 
         />
+      <Stack.Screen name="Achievements" component={AchievementsScreen} options={{headerShown:false}} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -11,16 +11,21 @@ const ProgressTracker = ({ navigation }) => {
     level: 'Beginner',
     timeSpent: 0,
   });
-  
+  const levelBadges = {
+    Beginner: { icon: 'seed', color: '#4CAF50' },
+    Learner: { icon: 'leaf', color: '#8BC34A' },
+    'Knowledge Seeker': { icon: 'flower', color: '#FFC107' },
+    'Current Affairs Pro': { icon: 'tree', color: '#FF9800' },
+    Master: { icon: 'star', color: '#F44336' },
+  };
+
   const progressAnim = useRef(new Animated.Value(0)).current;
   const startTime = useRef(Date.now());
 
-  const calculateProgress = (questions) => {
-    if (questions < 10) return '10%';
-    if (questions < 25) return '25%';
-    if (questions < 50) return '50%';
-    if (questions < 100) return '75%';
-    return '100%';
+  const calculateProgress = (timeSpent) => {
+    const maxTime = 36000; // 10 hours as the "max" for 100%
+    const percentage = Math.min((timeSpent / maxTime) * 100, 100);
+    return percentage; // Returns 0-100
   };
 
   useEffect(() => {
@@ -28,20 +33,31 @@ const ProgressTracker = ({ navigation }) => {
       const loadedStats = await loadStats();
       setStats(loadedStats);
       Animated.timing(progressAnim, {
-        toValue: 1,
+        toValue: calculateProgress(loadedStats.timeSpent) / 100,
         duration: 800,
         useNativeDriver: false,
       }).start();
     };
     initStats();
 
-    // Subscribe to stats updates
     const unsubscribe = subscribeToStats((newStats) => {
       setStats(newStats);
+      Animated.timing(progressAnim, {
+        toValue: calculateProgress(newStats.timeSpent) / 100,
+        duration: 500,
+        useNativeDriver: false,
+      }).start();
     });
 
-    // Cleanup
+    // Update time spent periodically
+    const interval = setInterval(() => {
+      const timeSpentThisSession = Math.floor((Date.now() - startTime.current) / 1000);
+      updateStats('time', timeSpentThisSession);
+      startTime.current = Date.now(); // Reset start time after saving
+    }, 60000); // Update every minute
+
     return () => {
+      clearInterval(interval);
       unsubscribe();
       const timeSpentThisSession = Math.floor((Date.now() - startTime.current) / 1000);
       updateStats('time', timeSpentThisSession);
@@ -50,7 +66,7 @@ const ProgressTracker = ({ navigation }) => {
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0%', calculateProgress(stats.questionsAnswered)],
+    outputRange: ['0%', '100%'],
   });
 
   return (
@@ -60,7 +76,7 @@ const ProgressTracker = ({ navigation }) => {
           <Icon name="fire" size={18} color="#FF5722" />
           <Text style={styles.streakText}>{stats.streak} day streak</Text>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.profileButton}
           onPress={() => navigation.navigate('Profile')}
         >
@@ -68,15 +84,21 @@ const ProgressTracker = ({ navigation }) => {
           <Icon name="chevron-right" size={16} color="#FFF" />
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.progressBarContainer}>
-        <Animated.View 
-          style={[styles.progressBar, { width: progressWidth }]} 
-        />
+        <Animated.View style={[styles.progressBar, { width: progressWidth }]} />
         <Text style={styles.levelText}>{stats.level}</Text>
       </View>
-      
+
       <View style={styles.statsContainer}>
+        <View style={styles.levelContainer}>
+          <Icon
+            name={levelBadges[stats.level].icon}
+            size={36}
+            color={levelBadges[stats.level].color}
+          />
+          <Text style={styles.levelText}>{stats.level}</Text>
+        </View>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{stats.questionsAnswered}</Text>
           <Text style={styles.statLabel}>Questions</Text>
@@ -102,6 +124,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2A2A',
     borderRadius: 16,
     padding: 15,
+  },levelContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  levelText: {
+    color: '#FFF',
+    fontSize: 16,
+    marginTop: 8,
+    fontWeight: '600',
+  },
+  levelTextBadge: { // Changed name
+    color: '#FFF',
+    fontSize: 16,
+    marginTop: 8,
+    fontWeight: '600',
   },
   progressHeader: {
     flexDirection: 'row',
