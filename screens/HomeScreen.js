@@ -72,10 +72,13 @@ const LatestNewsPreview = ({ navigation }) => {
     fetchNews();
   }, []);
 
-  const handleNewsPress = async (screenName, newsId) => {
+  const handleNewsPress = async (categoryName, newsId) => {
     // Optional: Uncomment to track articles read if desired
     // await updateStats('article', 1);
-    navigation.navigate(screenName, { selectedNewsId: newsId });
+    navigation.navigate('Categories', { 
+      initialCategory: categoryName, 
+      selectedNewsId: newsId 
+    });
   };
 
   if (loading) {
@@ -161,21 +164,18 @@ const HomeScreen = () => {
       setUserStats(newStats);
     });
 
-    // Track time spent every minute
     const interval = setInterval(() => {
       const timeSpentThisSession = Math.floor((Date.now() - startTime.current) / 1000);
       updateStats('time', timeSpentThisSession);
       startTime.current = Date.now();
     }, 60000);
 
-    // Animation sequence
     Animated.sequence([
       Animated.timing(headerAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
       Animated.timing(titleOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
     ]).start();
 
-    // Interstitial ad listeners
     const unsubscribeLoaded = interstitialRef.addAdEventListener(AdEventType.LOADED, () => {
       setInterstitialLoaded(true);
     });
@@ -238,9 +238,11 @@ const HomeScreen = () => {
     }
   };
 
-  const handleCategoryPress = screenName => {
+  const handleCategoryPress = (categoryName) => {
     setNavigationCount(prevCount => prevCount + 1);
-    showInterstitialIfReady(() => navigation.navigate(screenName));
+    showInterstitialIfReady(() => {
+      navigation.navigate('Categories', { initialCategory: categoryName });
+    });
   };
 
   const headerTranslateY = headerAnim.interpolate({
@@ -275,7 +277,6 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#121212" barStyle="light-content" />
-
       {/* Sidebar */}
       <Animated.View style={[styles.sidebar, { transform: [{ translateX: sidebarAnim }] }]}>
         <View style={styles.sidebarHeader}>
@@ -321,22 +322,18 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
       </Animated.View>
-
       {/* Backdrop */}
       {isSidebarOpen && (
         <TouchableWithoutFeedback onPress={toggleSidebar}>
           <View style={styles.backdrop} />
         </TouchableWithoutFeedback>
       )}
-
       <View style={styles.container}>
         <LinearGradient colors={['#121212', '#1E1E1E']} style={styles.gradient} />
-
         {/* Background accents */}
         <View style={styles.accentCircle1} />
         <View style={styles.accentCircle2} />
         <View style={styles.accentCircle3} />
-
         {/* Header */}
         <Animated.View style={[styles.header, { transform: [{ translateY: headerTranslateY }] }]}>
           <LinearGradient colors={['#12121280', '#1E1E1E']} style={styles.headerGradient}>
@@ -364,7 +361,6 @@ const HomeScreen = () => {
             </View>
           </LinearGradient>
         </Animated.View>
-
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
           <FlatList
             ListHeaderComponent={
@@ -412,7 +408,6 @@ const HomeScreen = () => {
             ListFooterComponent={<View style={{ height: 80 }} />}
           />
         </Animated.View>
-
         {/* Banner Ad */}
         <View style={styles.bannerContainer}>
           <BannerAd
@@ -428,6 +423,7 @@ const HomeScreen = () => {
   );
 };
 
+// Styles remain unchanged
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#121212' },
   container: { flex: 1 },
